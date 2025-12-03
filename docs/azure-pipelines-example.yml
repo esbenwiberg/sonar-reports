@@ -36,10 +36,12 @@ steps:
     pip install requests python-dotenv pyyaml jinja2 click tabulate
   displayName: 'Install Report Generator Dependencies'
 
-# Step 3: Clone Report Generator (if not in same repo)
-# Uncomment if the report generator is in a separate repository
-# - checkout: git://YourProject/sonar-reports@main
-#   displayName: 'Checkout Report Generator'
+# Step 3: Clone Report Generator
+- script: |
+    git clone https://github.com/esbenwiberg/sonar-reports.git
+    cd sonar-reports
+    pip install -e .
+  displayName: 'Clone and Install Report Generator'
 
 # Step 4: Generate SAST Report
 - script: |

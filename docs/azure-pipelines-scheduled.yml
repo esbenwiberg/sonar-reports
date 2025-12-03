@@ -28,6 +28,13 @@ steps:
   inputs:
     versionSpec: '3.11'
 
+# Clone Report Generator
+- script: |
+    git clone https://github.com/esbenwiberg/sonar-reports.git
+    cd sonar-reports
+    pip install -e .
+  displayName: 'Clone and Install Report Generator'
+
 - script: |
     pip install requests python-dotenv pyyaml jinja2 click tabulate
   displayName: 'Install Dependencies'
