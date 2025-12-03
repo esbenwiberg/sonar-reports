@@ -1,0 +1,41 @@
+# SonarCloud SAST Report Generator - Configuration Example
+# Copy this file to config.yaml and fill in your values
+
+sonarcloud:
+  # Your SonarCloud API token (required)
+  # Generate at: https://sonarcloud.io/account/security
+  token: "your-sonarcloud-api-token-here"
+  
+  # Your SonarCloud organization key (optional, can be specified via CLI)
+  organization: "your-organization"
+  
+  # Default project key (optional, can be specified via CLI)
+  project_key: "your-organization_your-project"
+  
+  # SonarCloud API base URL (optional, defaults to https://sonarcloud.io/api)
+  base_url: "https://sonarcloud.io/api"
+
+report:
+  # Directory where reports will be saved (optional, defaults to ./reports)
+  output_path: "./reports"
+  
+  # Include resolved issues in the report (optional, defaults to false)
+  include_resolved: false
+  
+  # Filter issues by severity (optional, defaults to BLOCKER, CRITICAL, MAJOR)
+  # Valid values: BLOCKER, CRITICAL, MAJOR, MINOR, INFO
+  severity_filter:
+    - BLOCKER
+    - CRITICAL
+    - MAJOR
+  
+  # Maximum number of issues to show per section (optional, defaults to 10)
+  max_issues_per_section: 10
+
+# API settings (optional)
+api:
+  # Request timeout in seconds (optional, defaults to 30)
+  timeout: 30
+  
+  # Maximum number of retries for failed requests (optional, defaults to 3)
+  max_retries: 3

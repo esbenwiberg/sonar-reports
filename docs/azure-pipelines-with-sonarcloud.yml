@@ -1,0 +1,112 @@
+# Complete Azure DevOps Pipeline with SonarCloud Analysis + Report Generation
+#
+# This pipeline demonstrates the full workflow:
+# 1. Build and test your application
+# 2. Run SonarCloud analysis
+# 3. Generate customer-facing SAST report
+# 4. Publish both analysis results and report
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: SonarCloud-Credentials
+  - name: SONARCLOUD_PROJECT_KEY
+    value: 'your-org_your-project'
+  - name: SONARCLOUD_ORGANIZATION
+    value: 'your-org'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.11'
+      inputs:
+        versionSpec: '3.11'
+    
+    - script: |
+        pip install -r requirements.txt
+        # Add your build/test commands here
+        # pytest --cov=src --cov-report=xml
+      displayName: 'Install Dependencies and Run Tests'
+
+- stage: Analysis
+  displayName: 'SonarCloud Analysis'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: SonarCloudAnalysis
+    displayName: 'Run SonarCloud Analysis'
+    steps:
+    - task: SonarCloudPrepare@1
+      displayName: 'Prepare SonarCloud Analysis'
+      inputs:
+        SonarCloud: 'SonarCloud-Connection'  # Service connection name
+        organization: '$(SONARCLOUD_ORGANIZATION)'
+        scannerMode: 'CLI'
+        configMode: 'manual'
+        cliProjectKey: '$(SONARCLOUD_PROJECT_KEY)'
+        cliProjectName: 'Your Project Name'
+        cliSources: 'src'
+    
+    - task: SonarCloudAnalyze@1
+      displayName: 'Run Code Analysis'
+    
+    - task: SonarCloudPublish@1
+      displayName: 'Publish Quality Gate Result'
+      inputs:
+        pollingTimeoutSec: '300'
+
+- stage: Reporting
+  displayName: 'Generate SAST Report'
+  dependsOn: Analysis
+  condition: succeeded()
+  jobs:
+  - job: GenerateReport
+    displayName: 'Generate Customer Report'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python 3.11'
+      inputs:
+        versionSpec: '3.11'
+    
+    - script: |
+        pip install requests python-dotenv pyyaml jinja2 click tabulate
+      displayName: 'Install Report Generator'
+    
+    - script: |
+        python -m sonar_reports generate \
+          --project-key $(SONARCLOUD_PROJECT_KEY) \
+          --output $(Build.ArtifactStagingDirectory)/SAST-Report-$(Build.BuildNumber).md \
+          --severity BLOCKER --severity CRITICAL --severity MAJOR \
+          --verbose
+      displayName: 'Generate SAST Report'
+      env:
+        SONARCLOUD_TOKEN: $(SONARCLOUD_TOKEN)
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish SAST Report'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'sast-reports'
+        publishLocation: 'Container'
+    
+    - script: |
+        echo "=========================================="
+        echo "✓ Pipeline Completed Successfully!"
+        echo "=========================================="
+        echo "SonarCloud Analysis: Complete"
+        echo "SAST Report: Generated"
+        echo "Artifacts: Published"
+        echo "=========================================="
+      displayName: 'Pipeline Summary'

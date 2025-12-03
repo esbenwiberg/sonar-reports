@@ -1,0 +1,230 @@
+# SAST Report: {{ project_info.name }}
+
+**Generated:** {{ generation_date }}  
+**Project Key:** {{ project_info.key }}  
+**Organization:** {{ project_info.organization }}  
+**Last Analysis:** {{ project_info.get_formatted_analysis_date() }}  
+**Quality Gate:** {{ quality_gate_status }} {{ quality_gate_emoji }}
+
+---
+
+## Executive Summary
+
+This report provides a comprehensive Static Application Security Testing (SAST) analysis of the {{ project_info.name }} project. The analysis identifies security vulnerabilities, reliability issues, and maintainability concerns that should be addressed to maintain a secure and maintainable codebase.
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Quality Gate** | {{ quality_gate_status }} | {{ quality_gate_emoji }} |
+| **Technical Debt** | {{ statistics.technical_debt }} | {% if statistics.technical_debt_minutes > 2400 %}⚠️{% else %}ℹ️{% endif %} |
+
+### Software Quality
+
+| Category | Total Issues | Blocker | Critical | Major | Minor | Info |
+|----------|--------------|---------|----------|-------|-------|------|
+| **Security** | {{ category_stats.security.total }} | {{ category_stats.security.by_severity.get('BLOCKER', 0) }} | {{ category_stats.security.by_severity.get('CRITICAL', 0) }} | {{ category_stats.security.by_severity.get('MAJOR', 0) }} | {{ category_stats.security.by_severity.get('MINOR', 0) }} | {{ category_stats.security.by_severity.get('INFO', 0) }} |
+| **Reliability** | {{ category_stats.reliability.total }} | {{ category_stats.reliability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.reliability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.reliability.by_severity.get('MAJOR', 0) }} | {{ category_stats.reliability.by_severity.get('MINOR', 0) }} | {{ category_stats.reliability.by_severity.get('INFO', 0) }} |
+| **Maintainability** | {{ category_stats.maintainability.total }} | {{ category_stats.maintainability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.maintainability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.maintainability.by_severity.get('MAJOR', 0) }} | {{ category_stats.maintainability.by_severity.get('MINOR', 0) }} | {{ category_stats.maintainability.by_severity.get('INFO', 0) }} |
+
+### Key Findings
+{% set total_blocker = statistics.by_severity.get('BLOCKER', 0) %}
+{% set total_critical = statistics.by_severity.get('CRITICAL', 0) %}
+{% if total_blocker == 0 %}
+- ✅ No blocker-level issues detected
+{% else %}
+- ❌ {{ total_blocker }} blocker-level issue(s) require immediate attention
+{% endif %}
+{% if total_critical > 0 %}
+- ⚠️ {{ total_critical }} critical issue(s) require immediate attention
+{% endif %}
+{% if category_stats.security.total > 0 %}
+- ⚠️ {{ category_stats.security.total }} security issue(s) identified
+{% else %}
+- ✅ No security issues detected
+{% endif %}
+- ℹ️ Overall technical debt: {{ statistics.technical_debt }}
+
+---
+
+## Security Overview
+
+{% if security_summary.total > 0 %}
+### Critical Security Issues
+
+{% for severity in ['BLOCKER', 'CRITICAL', 'MAJOR'] %}
+{% if security_by_severity[severity]|length > 0 %}
+#### {{ severity }} Severity ({{ security_by_severity[severity]|length }} issue{% if security_by_severity[severity]|length != 1 %}s{% endif %})
+
+| Rule | Message | Location | Line |
+|------|---------|----------|------|
+{% for issue in security_by_severity[severity] %}
+| {{ issue.rule }} | {{ issue.message[:80] }}{% if issue.message|length > 80 %}...{% endif %} | {{ issue.get_component_name() }} | {{ issue.line if issue.line else 'N/A' }} |
+{% endfor %}
+
+{% endif %}
+{% endfor %}
+
+{% if security_hotspots|length > 0 %}
+### Security Hotspots ({{ security_hotspots|length }})
+
+Security hotspots are security-sensitive pieces of code that require manual review:
+
+| Priority | Category | Location | Status |
+|----------|----------|----------|--------|
+{% for hotspot in security_hotspots %}
+| {{ hotspot.get('vulnerabilityProbability', 'MEDIUM') }} | {{ hotspot.get('securityCategory', 'Unknown') }} | {{ hotspot.get('component', 'Unknown')[:60] }} | {{ hotspot.get('status', 'TO_REVIEW') }} |
+{% endfor %}
+{% endif %}
+
+{% else %}
+✅ **No security issues detected** - Great job maintaining secure code!
+{% endif %}
+
+---
+
+## Code Quality Metrics
+
+### Overview
+
+| Metric | Value | Rating |
+|--------|-------|--------|
+{% for metric in metrics %}
+{% if metric.key not in ['duplicated_lines_density', 'code_smells', 'ncloc'] %}
+| **{{ metric.metric_name }}** | {{ metric.get_formatted_value() }} | {% if 'rating' in metric.key %}{{ metric.get_formatted_value() }}{% else %}-{% endif %} |
+{% endif %}
+{% endfor %}
+
+---
+
+## Detailed Findings
+
+{% if issues_by_type.get('VULNERABILITY', [])|length > 0 %}
+### Security Issues ({{ issues_by_type.get('VULNERABILITY', [])|length }} vulnerabilities)
+
+Security vulnerabilities that need to be addressed:
+
+| Severity | Rule | Message | Location | Line |
+|----------|------|---------|----------|------|
+{% for issue in issues_by_type.get('VULNERABILITY', [])[:max_issues] %}
+| {{ issue.severity }} | {{ issue.rule }} | {{ issue.message[:60] }}{% if issue.message|length > 60 %}...{% endif %} | {{ issue.get_component_name()[:40] }} | {{ issue.line if issue.line else 'N/A' }} |
+{% endfor %}
+
+{% if issues_by_type.get('VULNERABILITY', [])|length > max_issues %}
+_Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|length }} vulnerabilities._
+{% endif %}
+{% else %}
+✅ **No security vulnerabilities detected** - Great job maintaining secure code!
+{% endif %}
+
+---
+
+## Compliance & Standards
+
+### Security Standards Compliance
+
+| Standard | Status | Notes |
+|----------|--------|-------|
+| OWASP Top 10 2021 | {% if security_summary.total == 0 %}✅ Good{% else %}⚠️ Partial{% endif %} | {{ security_summary.total }} security issue(s) found |
+| CWE Top 25 | {% if security_summary.vulnerabilities == 0 %}✅ Good{% else %}⚠️ Review Required{% endif %} | {{ security_summary.vulnerabilities }} vulnerabilit{% if security_summary.vulnerabilities != 1 %}ies{% else %}y{% endif %} identified |
+| SANS Top 25 | {% if statistics.by_severity.get('BLOCKER', 0) == 0 %}✅ Good{% else %}⚠️ Issues Found{% endif %} | {{ statistics.by_severity.get('BLOCKER', 0) }} blocker issue(s) |
+
+---
+
+## Recommendations
+
+### Immediate Actions (Priority 1)
+
+{% set critical_issues = [] %}
+{% for issue in top_issues %}
+{% if issue.severity in ['BLOCKER', 'CRITICAL'] and issue.is_security_issue() %}
+{% set _ = critical_issues.append(issue) %}
+{% endif %}
+{% endfor %}
+
+{% if critical_issues|length > 0 %}
+{% for issue in critical_issues[:3] %}
+{{ loop.index }}. **Fix {{ issue.severity }} {{ issue.type }}** ({{ issue.get_component_name() }}:{{ issue.line if issue.line else 'N/A' }})
+   - Impact: High - {{ issue.message }}
+   - Rule: {{ issue.rule }}
+   - Recommendation: Review and fix immediately
+   {% if issue.effort %}
+   - Estimated effort: {{ issue.effort }}
+   {% endif %}
+
+{% endfor %}
+{% else %}
+✅ No critical security issues requiring immediate action.
+{% endif %}
+
+### Short-term Actions (Priority 2)
+
+{% if category_stats.security.total > 0 %}
+- Address {{ category_stats.security.total }} security issue(s)
+{% endif %}
+{% if category_stats.reliability.total > 0 %}
+- Fix {{ category_stats.reliability.total }} reliability issue(s)
+{% endif %}
+- Review and resolve {{ security_hotspots|length }} security hotspot(s)
+
+### Long-term Improvements (Priority 3)
+
+- Improve code coverage (target: 80%+)
+- Reduce code duplication
+{% if category_stats.maintainability.total > 0 %}
+- Address {{ category_stats.maintainability.total }} maintainability issue(s)
+{% endif %}
+- Reduce technical debt (current: {{ statistics.technical_debt }})
+- Improve code documentation
+
+---
+
+## Appendix
+
+### Quality Ratings Explained
+
+- **A**: Excellent - 0 issues or < 5% technical debt ratio
+- **B**: Good - Minor issues or 5-10% technical debt ratio
+- **C**: Acceptable - Some issues or 10-20% technical debt ratio
+- **D**: Poor - Many issues or 20-50% technical debt ratio
+- **E**: Critical - Critical issues or > 50% technical debt ratio
+
+### Severity Definitions
+
+- **BLOCKER**: Bug with a high probability to impact the behavior of the application in production. Must be fixed immediately.
+- **CRITICAL**: Either a bug with a low probability to impact the behavior of the application in production or a security flaw. Must be reviewed immediately.
+- **MAJOR**: Quality flaw which can highly impact the developer's productivity. Should be fixed.
+- **MINOR**: Quality flaw which can slightly impact the developer's productivity. Nice to fix.
+- **INFO**: Neither a bug nor a quality flaw, just a finding. Informational only.
+
+### Issue Types
+
+- **BUG**: A coding error that will break your code and needs to be fixed immediately
+- **VULNERABILITY**: A security-related issue that represents a potential backdoor for attackers
+- **CODE_SMELL**: A maintainability issue that makes your code harder to understand and maintain
+- **SECURITY_HOTSPOT**: Security-sensitive code that requires manual review
+
+### Methodology
+
+This report was generated using the SonarCloud API, which performs static analysis on the source code to identify:
+- Security vulnerabilities and hotspots
+- Bugs and potential runtime errors
+- Code smells and maintainability issues
+- Code coverage and duplication metrics
+- Technical debt estimation
+
+The analysis is based on industry-standard rules and best practices, including:
+- OWASP Top 10
+- CWE (Common Weakness Enumeration)
+- SANS Top 25
+- Language-specific best practices
+
+### Report Metadata
+
+- **Generated by**: SonarCloud SAST Report Generator v1.0.0
+- **Report Date**: {{ generation_date }}
+- **Data Source**: SonarCloud API
+- **Analysis Date**: {{ project_info.get_formatted_analysis_date() }}
+- **Report Format**: Markdown
+
+---
+
+*This report is confidential and intended for internal use only. Do not distribute outside your organization without proper authorization.*

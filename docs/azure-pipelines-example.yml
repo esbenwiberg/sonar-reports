@@ -1,0 +1,72 @@
+# Example Azure DevOps Pipeline for SonarCloud SAST Report Generation
+# 
+# This pipeline demonstrates how to integrate the SonarCloud SAST Report Generator
+# into your Azure DevOps CI/CD workflow.
+#
+# Prerequisites:
+# 1. Create a Variable Group named 'SonarCloud-Credentials' with SONARCLOUD_TOKEN
+# 2. Update SONARCLOUD_PROJECT_KEY with your actual project key
+# 3. Ensure Python 3.8+ is available in your pipeline agent
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: SonarCloud-Credentials  # Contains SONARCLOUD_TOKEN (secret)
+  - name: SONARCLOUD_PROJECT_KEY
+    value: 'your-org_your-project'  # Replace with your project key
+
+steps:
+# Step 1: Setup Python
+- task: UsePythonVersion@0
+  displayName: 'Use Python 3.11'
+  inputs:
+    versionSpec: '3.11'
+    addToPath: true
+
+# Step 2: Install Report Generator Dependencies
+- script: |
+    python -m pip install --upgrade pip
+    pip install requests python-dotenv pyyaml jinja2 click tabulate
+  displayName: 'Install Report Generator Dependencies'
+
+# Step 3: Clone Report Generator (if not in same repo)
+# Uncomment if the report generator is in a separate repository
+# - checkout: git://YourProject/sonar-reports@main
+#   displayName: 'Checkout Report Generator'
+
+# Step 4: Generate SAST Report
+- script: |
+    python -m sonar_reports generate \
+      --project-key $(SONARCLOUD_PROJECT_KEY) \
+      --output $(Build.ArtifactStagingDirectory)/SAST-Report-$(Build.BuildNumber).md \
+      --severity BLOCKER --severity CRITICAL --severity MAJOR \
+      --verbose
+  displayName: 'Generate SAST Report'
+  env:
+    SONARCLOUD_TOKEN: $(SONARCLOUD_TOKEN)
+
+# Step 5: Publish Report as Pipeline Artifact
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish SAST Report'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'sast-reports'
+    publishLocation: 'Container'
+
+# Step 6: Display Summary (Optional)
+- script: |
+    echo "=========================================="
+    echo "SAST Report Generated Successfully!"
+    echo "=========================================="
+    echo "Project: $(SONARCLOUD_PROJECT_KEY)"
+    echo "Build: $(Build.BuildNumber)"
+    echo "Report Location: Artifacts > sast-reports"
+    echo "=========================================="
+  displayName: 'Display Summary'

@@ -1,0 +1,50 @@
+# Scheduled Azure DevOps Pipeline for Weekly SAST Reports
+#
+# This pipeline runs on a schedule to generate weekly SAST reports
+# without requiring code changes or manual triggers.
+
+trigger: none  # Disable CI triggers
+
+# Schedule: Every Monday at 9 AM UTC
+schedules:
+- cron: "0 9 * * 1"
+  displayName: Weekly SAST Report Generation
+  branches:
+    include:
+    - main
+  always: true  # Run even if there are no code changes
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: SonarCloud-Credentials
+  - name: SONARCLOUD_PROJECT_KEY
+    value: 'your-org_your-project'
+
+steps:
+- task: UsePythonVersion@0
+  displayName: 'Use Python 3.11'
+  inputs:
+    versionSpec: '3.11'
+
+- script: |
+    pip install requests python-dotenv pyyaml jinja2 click tabulate
+  displayName: 'Install Dependencies'
+
+- script: |
+    REPORT_DATE=$(date +%Y-%m-%d)
+    python -m sonar_reports generate \
+      --project-key $(SONARCLOUD_PROJECT_KEY) \
+      --output $(Build.ArtifactStagingDirectory)/Weekly-SAST-Report-${REPORT_DATE}.md \
+      --verbose
+  displayName: 'Generate Weekly SAST Report'
+  env:
+    SONARCLOUD_TOKEN: $(SONARCLOUD_TOKEN)
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Weekly Report'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'weekly-sast-reports'
+    publishLocation: 'Container'
