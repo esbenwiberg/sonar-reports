@@ -234,7 +234,7 @@ For detailed information, see the [`docs/`](docs/) folder:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/sonar-reports.git
+git clone https://github.com/esbenwiberg/sonar-reports.git
 cd sonar-reports
 
 # Create virtual environment
@@ -331,90 +331,19 @@ The tool implements:
 - Request batching where possible
 - Efficient pagination
 
-## Security Considerations
-
-⚠️ **Important Security Notes**:
-
-1. **Never commit API tokens** to version control
-2. **Use environment variables** or secure vaults for tokens
-3. **Restrict token permissions** to read-only access
-4. **Rotate tokens regularly** (every 90 days recommended)
-5. **Limit report distribution** to authorized personnel only
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Contribution Guidelines
-
-- Follow PEP 8 style guide
-- Add tests for new features
-- Update documentation as needed
-- Ensure all tests pass before submitting PR
-
-## Roadmap
-
-### Version 1.0 (Current)
-- [x] Basic report generation
-- [x] Markdown output format
-- [x] CLI interface
-- [x] Configuration management
-
-### Version 1.1 (Planned)
-- [ ] HTML report output with charts
-- [ ] PDF export capability
-- [ ] Trend analysis (compare with previous reports)
-- [ ] Custom report templates
-
-### Version 2.0 (Future)
-- [ ] Multi-project reports
-- [ ] CI/CD integration examples
-- [ ] Email delivery
-- [ ] Dashboard web interface
-- [ ] Scheduled report generation
-
-## FAQ
-
-**Q: Can I use this with SonarQube (self-hosted)?**  
-A: Not currently. This tool is designed for SonarCloud API. However, the architecture could be adapted for SonarQube with minimal changes.
-
-**Q: How often should I generate reports?**  
-A: It depends on your needs. Common schedules:
-- Weekly for active development
-- Before releases
-- After major changes
-- Monthly for maintenance projects
-
-**Q: Can I customize the report format?**  
-A: Yes! The report uses Jinja2 templates. You can modify `src/sonar_reports/report/templates/report.md.j2` to customize the output.
-
-**Q: Does this work with private projects?**  
-A: Yes, as long as your API token has access to the project.
-
-**Q: How much does this cost?**  
-A: The tool itself is free and open-source. You only need a SonarCloud account (which has free tiers for open-source projects).
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details
 
 ## Support
 
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/sonar-reports/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/sonar-reports/discussions)
-- 📖 Documentation: [Wiki](https://github.com/yourusername/sonar-reports/wiki)
+- 🐛 Issues: [GitHub Issues](https://github.com/esbenwiberg/sonar-reports/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/esbenwiberg/sonar-reports/discussions)
+- 📖 Documentation: [Wiki](https://github.com/esbenwiberg/sonar-reports/wiki)
 
 ## Acknowledgments
 
 - Built with [SonarCloud API](https://sonarcloud.io/web_api)
-- Inspired by the need for customer-facing security reports
-- Thanks to all contributors!
 
 ---
 
