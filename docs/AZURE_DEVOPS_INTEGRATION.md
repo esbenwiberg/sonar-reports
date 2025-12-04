@@ -317,7 +317,7 @@ Store configuration in your repository:
 ```yaml
 sonarcloud:
   token: "${SONARCLOUD_TOKEN}"  # Will be replaced by env var
-  base_url: "https://sonarcloud.io/api"
+  base_url: "https://sonarcloud.io"
 
 report:
   output_path: "./reports"

@@ -80,7 +80,7 @@ pip install -e .
 SONARCLOUD_TOKEN=your-api-token          # Required: Your SonarCloud API token
 SONARCLOUD_ORGANIZATION=your-org         # Optional: Your organization key
 SONARCLOUD_PROJECT_KEY=your-project      # Optional: Default project key
-SONARCLOUD_BASE_URL=https://sonarcloud.io/api  # Optional: API base URL
+SONARCLOUD_BASE_URL=https://sonarcloud.io  # Optional: API base URL
 ```
 
 ### Config File (YAML)
@@ -92,7 +92,7 @@ sonarcloud:
   token: "your-api-token"
   organization: "your-organization"
   project_key: "your-project-key"
-  base_url: "https://sonarcloud.io/api"
+  base_url: "https://sonarcloud.io"
 
 report:
   output_path: "./reports"

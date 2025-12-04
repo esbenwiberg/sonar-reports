@@ -119,7 +119,7 @@ Expected output:
 Configuration Details:
   Organization: your-org
   Project Key: your-org_your-project
-  Base URL: https://sonarcloud.io/api
+  Base URL: https://sonarcloud.io
   Output Path: ./reports
   Severity Filter: BLOCKER, CRITICAL, MAJOR
   Include Resolved: False

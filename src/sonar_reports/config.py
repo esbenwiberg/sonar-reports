@@ -24,7 +24,7 @@ class Config:
     sonarcloud_token: str
     organization: Optional[str] = None
     project_key: Optional[str] = None
-    base_url: str = "https://sonarcloud.io/api"
+    base_url: str = "https://sonarcloud.io"
     
     # Report settings
     output_path: str = "./reports"
@@ -71,7 +71,7 @@ class Config:
             sonarcloud_token=token,
             organization=os.getenv("SONARCLOUD_ORGANIZATION"),
             project_key=project_key or os.getenv("SONARCLOUD_PROJECT_KEY"),
-            base_url=os.getenv("SONARCLOUD_BASE_URL", "https://sonarcloud.io/api"),
+            base_url=os.getenv("SONARCLOUD_BASE_URL", "https://sonarcloud.io"),
             output_path=os.getenv("REPORT_OUTPUT_PATH", "./reports"),
             include_resolved=os.getenv("REPORT_INCLUDE_RESOLVED", "false").lower() == "true",
         )
@@ -117,7 +117,7 @@ class Config:
             sonarcloud_token=token,
             organization=sonarcloud.get('organization'),
             project_key=project_key or sonarcloud.get('project_key'),
-            base_url=sonarcloud.get('base_url', 'https://sonarcloud.io/api'),
+            base_url=sonarcloud.get('base_url', 'https://sonarcloud.io'),
             output_path=report.get('output_path', './reports'),
             include_resolved=report.get('include_resolved', False),
             severity_filter=report.get('severity_filter', ['BLOCKER', 'CRITICAL', 'MAJOR']),

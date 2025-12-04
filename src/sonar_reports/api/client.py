@@ -19,7 +19,7 @@ class SonarCloudAPIError(Exception):
 class SonarCloudClient:
     """Client for interacting with SonarCloud API."""
     
-    def __init__(self, token: str, base_url: str = "https://sonarcloud.io/api", timeout: int = 30):
+    def __init__(self, token: str, base_url: str = "https://sonarcloud.io", timeout: int = 30):
         """
         Initialize SonarCloud API client.
         

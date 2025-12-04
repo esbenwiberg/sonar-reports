@@ -41,7 +41,7 @@ sonarcloud:
   token: "your-api-token"
   organization: "your-org"
   project_key: "your-project-key"
-  base_url: "https://sonarcloud.io/api"
+  base_url: "https://sonarcloud.io"
 
 report:
   output_path: "./reports"

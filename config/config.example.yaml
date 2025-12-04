@@ -12,8 +12,8 @@ sonarcloud:
   # Default project key (optional, can be specified via CLI)
   project_key: "your-organization_your-project"
   
-  # SonarCloud API base URL (optional, defaults to https://sonarcloud.io/api)
-  base_url: "https://sonarcloud.io/api"
+  # SonarCloud API base URL (optional, defaults to https://sonarcloud.io)
+  base_url: "https://sonarcloud.io"
 
 report:
   # Directory where reports will be saved (optional, defaults to ./reports)
