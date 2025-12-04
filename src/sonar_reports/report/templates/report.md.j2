@@ -19,8 +19,8 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 
 ### Software Quality
 
-| Category | Total Issues | Blocker | Critical | Major | Minor | Info |
-|----------|--------------|---------|----------|-------|-------|------|
+| Category | Total Issues | Blocker | High | Medium | Low | Info |
+|----------|--------------|---------|------|--------|-----|------|
 | **Security** | {{ category_stats.security.total }} | {{ category_stats.security.by_severity.get('BLOCKER', 0) }} | {{ category_stats.security.by_severity.get('CRITICAL', 0) }} | {{ category_stats.security.by_severity.get('MAJOR', 0) }} | {{ category_stats.security.by_severity.get('MINOR', 0) }} | {{ category_stats.security.by_severity.get('INFO', 0) }} |
 | **Reliability** | {{ category_stats.reliability.total }} | {{ category_stats.reliability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.reliability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.reliability.by_severity.get('MAJOR', 0) }} | {{ category_stats.reliability.by_severity.get('MINOR', 0) }} | {{ category_stats.reliability.by_severity.get('INFO', 0) }} |
 | **Maintainability** | {{ category_stats.maintainability.total }} | {{ category_stats.maintainability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.maintainability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.maintainability.by_severity.get('MAJOR', 0) }} | {{ category_stats.maintainability.by_severity.get('MINOR', 0) }} | {{ category_stats.maintainability.by_severity.get('INFO', 0) }} |
@@ -52,7 +52,7 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 
 {% for severity in ['BLOCKER', 'CRITICAL', 'MAJOR'] %}
 {% if security_by_severity[severity]|length > 0 %}
-#### {{ severity }} Severity ({{ security_by_severity[severity]|length }} issue{% if security_by_severity[severity]|length != 1 %}s{% endif %})
+#### {{ severity|ui_severity }} Severity ({{ security_by_severity[severity]|length }} issue{% if security_by_severity[severity]|length != 1 %}s{% endif %})
 
 | Rule | Message | Location | Line |
 |------|---------|----------|------|
@@ -105,7 +105,7 @@ Security vulnerabilities that need to be addressed:
 | Severity | Rule | Message | Location | Line |
 |----------|------|---------|----------|------|
 {% for issue in issues_by_type.get('VULNERABILITY', [])[:max_issues] %}
-| {{ issue.severity }} | {{ issue.rule }} | {{ issue.message[:60] }}{% if issue.message|length > 60 %}...{% endif %} | {{ issue.get_component_name()[:40] }} | {{ issue.line if issue.line else 'N/A' }} |
+| {{ issue.severity|ui_severity }} | {{ issue.rule }} | {{ issue.message[:60] }}{% if issue.message|length > 60 %}...{% endif %} | {{ issue.get_component_name()[:40] }} | {{ issue.line if issue.line else 'N/A' }} |
 {% endfor %}
 
 {% if issues_by_type.get('VULNERABILITY', [])|length > max_issues %}
@@ -142,7 +142,7 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 
 {% if critical_issues|length > 0 %}
 {% for issue in critical_issues[:3] %}
-{{ loop.index }}. **Fix {{ issue.severity }} {{ issue.type }}** ({{ issue.get_component_name() }}:{{ issue.line if issue.line else 'N/A' }})
+{{ loop.index }}. **Fix {{ issue.severity|ui_severity }} {{ issue.type }}** ({{ issue.get_component_name() }}:{{ issue.line if issue.line else 'N/A' }})
    - Impact: High - {{ issue.message }}
    - Rule: {{ issue.rule }}
    - Recommendation: Review and fix immediately
@@ -189,11 +189,11 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 
 ### Severity Definitions
 
-- **BLOCKER**: Bug with a high probability to impact the behavior of the application in production. Must be fixed immediately.
-- **CRITICAL**: Either a bug with a low probability to impact the behavior of the application in production or a security flaw. Must be reviewed immediately.
-- **MAJOR**: Quality flaw which can highly impact the developer's productivity. Should be fixed.
-- **MINOR**: Quality flaw which can slightly impact the developer's productivity. Nice to fix.
-- **INFO**: Neither a bug nor a quality flaw, just a finding. Informational only.
+- **Blocker**: Bug with a high probability to impact the behavior of the application in production. Must be fixed immediately.
+- **High**: Either a bug with a low probability to impact the behavior of the application in production or a security flaw. Must be reviewed immediately.
+- **Medium**: Quality flaw which can highly impact the developer's productivity. Should be fixed.
+- **Low**: Quality flaw which can slightly impact the developer's productivity. Nice to fix.
+- **Info**: Neither a bug nor a quality flaw, just a finding. Informational only.
 
 ### Issue Types
 

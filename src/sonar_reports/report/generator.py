@@ -43,6 +43,7 @@ class ReportGenerator:
         
         # Add custom filters
         self.env.filters['format_table'] = self._format_table
+        self.env.filters['ui_severity'] = self._map_severity_to_ui
         
         self.template = self.env.get_template(template_name)
     
@@ -135,3 +136,23 @@ class ReportGenerator:
             return "_No data available_"
         
         return tabulate(data, headers=headers, tablefmt='github')
+    
+    @staticmethod
+    def _map_severity_to_ui(severity: str) -> str:
+        """
+        Map API severity terms to UI-friendly terms.
+        
+        Args:
+            severity: API severity (BLOCKER, CRITICAL, MAJOR, MINOR, INFO)
+            
+        Returns:
+            UI-friendly severity (Blocker, High, Medium, Low, Info)
+        """
+        severity_map = {
+            'BLOCKER': 'Blocker',
+            'CRITICAL': 'High',
+            'MAJOR': 'Medium',
+            'MINOR': 'Low',
+            'INFO': 'Info'
+        }
+        return severity_map.get(severity, severity)

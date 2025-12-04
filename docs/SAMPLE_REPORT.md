@@ -19,8 +19,8 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 
 ### Software Quality
 
-| Category | Total Issues | Blocker | Critical | Major | Minor | Info |
-|----------|--------------|---------|----------|-------|-------|------|
+| Category | Total Issues | Blocker | High | Medium | Low | Info |
+|----------|--------------|---------|------|--------|-----|------|
 | **Security** | 8 | 0 | 3 | 5 | 0 | 0 |
 | **Reliability** | 15 | 0 | 2 | 10 | 3 | 0 |
 | **Maintainability** | 104 | 0 | 1 | 24 | 75 | 4 |
@@ -37,7 +37,7 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 
 ### Critical Security Issues
 
-#### CRITICAL Severity (3 issues)
+#### High Severity (3 issues)
 
 | Rule | Message | Location | Line |
 |------|---------|----------|------|
@@ -95,14 +95,14 @@ Security vulnerabilities that need to be addressed:
 
 | Severity | Rule | Message | Location | Line |
 |----------|------|---------|----------|------|
-| CRITICAL | java:S2076 | OS commands should not be vulnerable to injection att... | src/main/java/com/example/FileProcessor.java | 145 |
-| CRITICAL | java:S3649 | Database queries should not be vulnerable to injectio... | src/main/java/com/example/UserRepository.java | 89 |
-| CRITICAL | java:S5131 | Endpoints should not be vulnerable to reflected XSS a... | src/main/java/com/example/SearchController.java | 67 |
-| MAJOR | java:S4426 | Cryptographic keys should be robust | src/main/java/com/example/EncryptionUtil.java | 34 |
-| MAJOR | java:S5542 | Encryption algorithms should be used with secure mode... | src/main/java/com/example/EncryptionUtil.java | 56 |
-| MAJOR | java:S2068 | Credentials should not be hard-coded | src/main/java/com/example/config/DatabaseConfig.java | 23 |
-| MAJOR | java:S5659 | JWT should be signed and verified with strong cipher ... | src/main/java/com/example/auth/JwtUtil.java | 78 |
-| MAJOR | java:S4790 | Hashing data is security-sensitive | src/main/java/com/example/auth/PasswordHasher.java | 45 |
+| High | java:S2076 | OS commands should not be vulnerable to injection att... | src/main/java/com/example/FileProcessor.java | 145 |
+| High | java:S3649 | Database queries should not be vulnerable to injectio... | src/main/java/com/example/UserRepository.java | 89 |
+| High | java:S5131 | Endpoints should not be vulnerable to reflected XSS a... | src/main/java/com/example/SearchController.java | 67 |
+| Medium | java:S4426 | Cryptographic keys should be robust | src/main/java/com/example/EncryptionUtil.java | 34 |
+| Medium | java:S5542 | Encryption algorithms should be used with secure mode... | src/main/java/com/example/EncryptionUtil.java | 56 |
+| Medium | java:S2068 | Credentials should not be hard-coded | src/main/java/com/example/config/DatabaseConfig.java | 23 |
+| Medium | java:S5659 | JWT should be signed and verified with strong cipher ... | src/main/java/com/example/auth/JwtUtil.java | 78 |
+| Medium | java:S4790 | Hashing data is security-sensitive | src/main/java/com/example/auth/PasswordHasher.java | 45 |
 
 ---
 
@@ -122,19 +122,19 @@ Security vulnerabilities that need to be addressed:
 
 ### Immediate Actions (Priority 1)
 
-1. **Fix CRITICAL VULNERABILITY** (src/main/java/com/example/FileProcessor.java:145)
+1. **Fix High VULNERABILITY** (src/main/java/com/example/FileProcessor.java:145)
    - Impact: High - OS commands should not be vulnerable to injection attacks
    - Rule: java:S2076
    - Recommendation: Review and fix immediately
    - Estimated effort: 30min
 
-2. **Fix CRITICAL VULNERABILITY** (src/main/java/com/example/UserRepository.java:89)
+2. **Fix High VULNERABILITY** (src/main/java/com/example/UserRepository.java:89)
    - Impact: High - Database queries should not be vulnerable to injection attacks
    - Rule: java:S3649
    - Recommendation: Review and fix immediately
    - Estimated effort: 1h
 
-3. **Fix CRITICAL VULNERABILITY** (src/main/java/com/example/SearchController.java:67)
+3. **Fix High VULNERABILITY** (src/main/java/com/example/SearchController.java:67)
    - Impact: High - Endpoints should not be vulnerable to reflected XSS attacks
    - Rule: java:S5131
    - Recommendation: Review and fix immediately
@@ -168,11 +168,11 @@ Security vulnerabilities that need to be addressed:
 
 ### Severity Definitions
 
-- **BLOCKER**: Bug with a high probability to impact the behavior of the application in production. Must be fixed immediately.
-- **CRITICAL**: Either a bug with a low probability to impact the behavior of the application in production or a security flaw. Must be reviewed immediately.
-- **MAJOR**: Quality flaw which can highly impact the developer's productivity. Should be fixed.
-- **MINOR**: Quality flaw which can slightly impact the developer's productivity. Nice to fix.
-- **INFO**: Neither a bug nor a quality flaw, just a finding. Informational only.
+- **Blocker**: Bug with a high probability to impact the behavior of the application in production. Must be fixed immediately.
+- **High**: Either a bug with a low probability to impact the behavior of the application in production or a security flaw. Must be reviewed immediately.
+- **Medium**: Quality flaw which can highly impact the developer's productivity. Should be fixed.
+- **Low**: Quality flaw which can slightly impact the developer's productivity. Nice to fix.
+- **Info**: Neither a bug nor a quality flaw, just a finding. Informational only.
 
 ### Issue Types
 

@@ -71,6 +71,29 @@ class Issue:
         }
         return priorities.get(self.severity, 0)
     
+    def get_ui_severity(self) -> str:
+        """
+        Get UI-friendly severity name matching SonarCloud UI.
+        
+        Maps API severity terms to UI terms:
+        - BLOCKER -> Blocker
+        - CRITICAL -> High
+        - MAJOR -> Medium
+        - MINOR -> Low
+        - INFO -> Info
+        
+        Returns:
+            UI-friendly severity name
+        """
+        severity_map = {
+            'BLOCKER': 'Blocker',
+            'CRITICAL': 'High',
+            'MAJOR': 'Medium',
+            'MINOR': 'Low',
+            'INFO': 'Info'
+        }
+        return severity_map.get(self.severity, self.severity)
+    
     def is_security_issue(self) -> bool:
         """
         Check if this is a security-related issue.
