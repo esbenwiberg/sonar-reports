@@ -153,13 +153,14 @@ class SonarCloudClient:
         logger.info(f"Fetched {len(all_items)} items from {endpoint}")
         return all_items
     
-    def get_issues(self, project_key: str, statuses: Optional[List[str]] = None) -> List[Dict]:
+    def get_issues(self, project_key: str, statuses: Optional[List[str]] = None, severities: Optional[List[str]] = None) -> List[Dict]:
         """
         Fetch all issues for a project.
         
         Args:
             project_key: SonarCloud project key
             statuses: List of issue statuses to include (default: OPEN, CONFIRMED, REOPENED)
+            severities: List of severities to filter by (e.g., ['BLOCKER', 'CRITICAL', 'MAJOR'])
             
         Returns:
             List of issue dictionaries
@@ -172,6 +173,11 @@ class SonarCloudClient:
             'types': 'VULNERABILITY,BUG,CODE_SMELL',
             'statuses': ','.join(statuses),
         }
+        
+        # Add severity filter if provided
+        if severities:
+            params['severities'] = ','.join(severities)
+            logger.info(f"Filtering issues by severities: {', '.join(severities)}")
         
         return self._paginate('/api/issues/search', params, 'issues')
     

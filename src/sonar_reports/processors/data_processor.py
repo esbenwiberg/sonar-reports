@@ -22,13 +22,14 @@ class DataProcessor:
         """
         self.api_client = api_client
     
-    def fetch_all_data(self, project_key: str, include_resolved: bool = False) -> ReportData:
+    def fetch_all_data(self, project_key: str, include_resolved: bool = False, severity_filter: List[str] = None) -> ReportData:
         """
         Fetch and process all data for a project.
         
         Args:
             project_key: SonarCloud project key
             include_resolved: Whether to include resolved issues
+            severity_filter: List of severities to include (e.g., ['BLOCKER', 'CRITICAL', 'MAJOR'])
             
         Returns:
             ReportData instance with all processed data
@@ -40,7 +41,7 @@ class DataProcessor:
         statuses = ['OPEN', 'CONFIRMED', 'REOPENED']
         if include_resolved:
             statuses.extend(['RESOLVED', 'CLOSED'])
-        raw_issues = self.api_client.get_issues(project_key, statuses)
+        raw_issues = self.api_client.get_issues(project_key, statuses, severity_filter)
         
         logger.info("Fetching security hotspots...")
         security_hotspots = self.api_client.get_security_hotspots(project_key)

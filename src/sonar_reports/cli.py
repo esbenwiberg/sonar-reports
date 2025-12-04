@@ -112,7 +112,7 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
             # Fetch and process data
             logger.info(f"Fetching data for project: {project_key}")
             processor = DataProcessor(client)
-            report_data = processor.fetch_all_data(project_key, cfg.include_resolved)
+            report_data = processor.fetch_all_data(project_key, cfg.include_resolved, cfg.severity_filter)
             
             # Generate report
             logger.info("Generating report...")
