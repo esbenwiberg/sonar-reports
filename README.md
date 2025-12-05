@@ -5,11 +5,12 @@ A Python-based tool to generate customer-facing SAST (Static Application Securit
 ## Features
 
 - 🔒 **Security-Focused**: Highlights vulnerabilities, security hotspots, and OWASP Top 10 coverage
-- 📊 **Comprehensive Metrics**: Includes code quality, coverage, technical debt, and maintainability ratings
+- 📊 **Comprehensive Metrics**: Includes code quality, coverage, and maintainability ratings
 - 📝 **Customer-Ready**: Professional formatting suitable for external stakeholders
 - 🚀 **Easy to Use**: Simple CLI interface with minimal configuration
 - 🔧 **Flexible**: Configurable via environment variables, config files, or command-line arguments
 - 📈 **Actionable**: Provides prioritized recommendations and remediation guidance
+- 📉 **Trend Analysis**: Generate interactive HTML reports showing metrics over time (NEW!)
 
 ## Quick Start
 
@@ -71,6 +72,26 @@ pip install -e .
    # Reports are saved to ./reports/ by default
    cat reports/your-project-key_2025-12-03.md
    ```
+
+4. **Generate trend analysis** (NEW!):
+
+   ```bash
+   # Analyze multiple reports to see trends over time
+   python -m sonar_reports trend --reports-dir ./reports
+   
+   # Filter by project
+   python -m sonar_reports trend --reports-dir ./reports --project-filter "PM.PowerHub"
+   
+   # Custom output location
+   python -m sonar_reports trend --reports-dir ./reports --output ./trends/report.html
+   ```
+
+   This generates an interactive HTML report with Chart.js graphs showing:
+   - Issues trend by severity over time
+   - Security metrics evolution
+   - Quality gate pass/fail history
+   - Code coverage progression
+   - Quality ratings comparison
 
 ## Configuration
 

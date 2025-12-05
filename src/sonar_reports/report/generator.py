@@ -103,6 +103,7 @@ class ReportGenerator:
         context = {
             'project_info': report_data.project_info,
             'generation_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'generation_date_iso': datetime.now().isoformat() + 'Z',
             'statistics': statistics,
             'category_stats': category_stats,
             'issues_by_severity': issues_by_severity,
@@ -116,6 +117,7 @@ class ReportGenerator:
             'quality_gate_emoji': report_data.project_info.get_quality_gate_emoji(),
             'top_issues': report_data.get_top_issues(self.max_issues_per_section),
             'max_issues': self.max_issues_per_section,
+            'report_data': report_data,
         }
         
         return self.template.render(**context)

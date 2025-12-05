@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Analysis Report: PM.PowerHub</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0288d1;
+            --danger-color: #d32f2f;
+            --warning-color: #f57c00;
+            --success-color: #4caf50;
+            --bg-color: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--bg-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        header {
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin: 0 0 10px 0;
+            font-size: 2em;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin: 20px 0 15px 0;
+            font-size: 1.5em;
+        }
+
+        h3 {
+            color: #555;
+            margin: 15px 0 10px 0;
+            font-size: 1.2em;
+        }
+
+        .metadata {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .metadata span {
+            display: flex;
+            align-items: center;
+        }
+
+        .metadata span::before {
+            content: "•";
+            margin-right: 8px;
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .executive-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .executive-summary h2 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
+        }
+
+        .summary-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .summary-card .value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .summary-card .change {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background-color: #f5f5f5;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--primary-color);
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tab-pane {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+
+        .analysis {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-left: 4px solid var(--primary-color);
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .analysis h3 {
+            margin-top: 0;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+
+        .metrics-table th,
+        .metrics-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .metrics-table th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .metrics-table tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-danger { background-color: #ffebee; color: var(--danger-color); }
+        .badge-warning { background-color: #fff3e0; color: var(--warning-color); }
+        .badge-success { background-color: #e8f5e9; color: var(--success-color); }
+        .badge-info { background-color: #e3f2fd; color: var(--primary-color); }
+
+        .recommendations {
+            margin: 30px 0;
+        }
+
+        .recommendation-card {
+            background: white;
+            border-left: 4px solid var(--danger-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .recommendation-card.high {
+            border-left-color: var(--warning-color);
+        }
+
+        .recommendation-card.medium {
+            border-left-color: var(--primary-color);
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        @media print {
+            .tabs { display: none; }
+            .tab-pane { display: block !important; page-break-after: always; }
+            .chart-container { height: 300px; }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .tabs { flex-wrap: wrap; }
+            .metadata { flex-direction: column; gap: 5px; }
+            .summary-grid { grid-template-columns: 1fr; }
+            .chart-container { height: 300px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Trend Analysis Report: PM.PowerHub</h1>
+            <div class="metadata">
+                <span>Analysis Period: 2025-11-01 to 2025-12-04</span>
+                <span>Reports Analyzed: 8</span>
+                <span>Project: 365projectum_PM.PowerHub</span>
+                <span>Generated: 2025-12-05 08:00:00 UTC</span>
+            </div>
+        </header>
+
+        <section class="executive-summary">
+            <h2>📈 Executive Summary: Improving</h2>
+            <p>The project shows positive improvement over the analysis period with a 35% reduction in critical issues and improved security posture.</p>
+            
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="label">Blocker Issues</div>
+                    <div class="value">1</div>
+                    <div class="change">-50% ✅ Improving</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Critical Issues</div>
+                    <div class="value">66</div>
+                    <div class="change">-35% ✅ Improving</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Security Issues</div>
+                    <div class="value">2</div>
+                    <div class="change">-60% ✅ Improving</div>
+                </div>
+                <div class="summary-card">
+                    <div class="label">Code Coverage</div>
+                    <div class="value">3.4%</div>
+                    <div class="change">+62% ✅ Improving</div>
+                </div>
+            </div>
+        </section>
+
+        <nav class="tabs">
+            <button class="tab active" onclick="switchTab('issues')">Issues Trend</button>
+            <button class="tab" onclick="switchTab('security')">Security</button>
+            <button class="tab" onclick="switchTab('quality-gate')">Quality Gate</button>
+            <button class="tab" onclick="switchTab('coverage')">Coverage</button>
+            <button class="tab" onclick="switchTab('ratings')">Ratings</button>
+        </nav>
+
+        <div class="tab-content">
+            <div id="issues" class="tab-pane active">
+                <h2>Issues by Severity Over Time</h2>
+                <div class="chart-container">
+                    <canvas id="issuesChart"></canvas>
+                </div>
+                <div class="analysis">
+                    <h3>Analysis</h3>
+                    <p><strong>Blocker Issues (Red Line):</strong> Reduced from 2 to 1 issue (-50%). One blocker remains and requires immediate attention.</p>
+                    <p><strong>Critical Issues (Orange Line):</strong> Significant improvement from 102 to 66 issues (-35%). Shows effective remediation efforts.</p>
+                    <p><strong>Major Issues (Yellow Line):</strong> Stable around 330-345 issues. Should be prioritized after critical issues are resolved.</p>
+                </div>
+            </div>
+
+            <div id="security" class="tab-pane">
+                <h2>Security Metrics Over Time</h2>
+                <div class="chart-container">
+                    <canvas id="securityChart"></canvas>
+                </div>
+                <div class="analysis">
+                    <h3>Analysis</h3>
+                    <p><strong>Vulnerabilities:</strong> Decreased from 12 to 7 (-42%). Steady downward trend indicates good security practices.</p>
+                    <p><strong>Security Hotspots:</strong> Stable at 7 hotspots. These require manual review to ensure they're not exploitable.</p>
+                    <p><strong>Security Issues:</strong> Major improvement from 5 to 2 (-60%). Excellent progress on security remediation.</p>
+                </div>
+            </div>
+
+            <div id="quality-gate" class="tab-pane">
+                <h2>Quality Gate Status Over Time</h2>
+                <div class="chart-container">
+                    <canvas id="qualityGateChart"></canvas>
+                </div>
+                <div class="analysis">
+                    <h3>Statistics</h3>
+                    <p><strong>Pass Rate:</strong> 0% (0 of 8 reports passed)</p>
+                    <p><strong>Current Streak:</strong> 8 consecutive failures</p>
+                    <p><strong>Key Blockers:</strong></p>
+                    <ul>
+                        <li>At least 1 blocker issue in all reports</li>
+                        <li>Security rating consistently E (Critical)</li>
+                        <li>Code coverage below minimum threshold (3.4% vs 80% target)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="coverage" class="tab-pane">
+                <h2>Code Coverage Trend</h2>
+                <div class="chart-container">
+                    <canvas id="coverageChart"></canvas>
+                </div>
+                <div class="analysis">
+                    <h3>Analysis</h3>
+                    <p><strong>Current Coverage:</strong> 3.4% (up from 2.1%)</p>
+                    <p><strong>Growth Rate:</strong> ~0.25% per week</p>
+                    <p><strong>Target:</strong> 80% (industry standard)</p>
+                    <p><strong>Gap:</strong> 76.6 percentage points remaining</p>
+                    <p><strong>Projection:</strong> At current rate, reaching 80% would take approximately 300+ weeks. Consider accelerating test development efforts.</p>
+                </div>
+            </div>
+
+            <div id="ratings" class="tab-pane">
+                <h2>Quality Ratings Comparison</h2>
+                <div class="chart-container">
+                    <canvas id="ratingsChart"></canvas>
+                </div>
+                <div class="analysis">
+                    <h3>Current Ratings</h3>
+                    <p><strong>Security Rating: E (Critical)</strong> - Driven by blocker security issues and vulnerabilities. Needs immediate attention.</p>
+                    <p><strong>Reliability Rating: C (Acceptable)</strong> - 32 reliability issues (bugs). Reduce to improve rating.</p>
+                    <p><strong>Maintainability Rating: A (Excellent)</strong> - Well-maintained codebase structure. Keep up the good work!</p>
+                </div>
+            </div>
+        </div>
+
+        <section class="recommendations">
+            <h2>🎯 Prioritized Recommendations</h2>
+            
+            <div class="recommendation-card">
+                <h3>🔴 Critical Priority: Resolve Blocker Security Issue</h3>
+                <p><strong>Issue:</strong> JWT token exposed in configuration file</p>
+                <p><strong>Location:</strong> Configuration/lulpowerhub/appsettings.json:24</p>
+                <p><strong>Action:</strong> Move token to secure vault or environment variable</p>
+                <p><strong>Estimated Effort:</strong> 1-2 hours</p>
+                <p><strong>Expected Impact:</strong> Reduce blocker count to 0, improve security rating</p>
+            </div>
+
+            <div class="recommendation-card high">
+                <h3>🟡 High Priority: Address Remaining Vulnerabilities</h3>
+                <p><strong>Current:</strong> 7 vulnerabilities</p>
+                <p><strong>Target:</strong> Reduce to 0-2</p>
+                <p><strong>Action:</strong> Review and fix security issues identified in reports</p>
+                <p><strong>Estimated Effort:</strong> 2-3 days</p>
+                <p><strong>Expected Impact:</strong> Improve security rating from E to C/D</p>
+            </div>
+
+            <div class="recommendation-card medium">
+                <h3>🔵 Medium Priority: Increase Code Coverage</h3>
+                <p><strong>Current:</strong> 3.4%</p>
+                <p><strong>Target:</strong> 20% (short-term), 80% (long-term)</p>
+                <p><strong>Action:</strong> Add unit tests for critical components</p>
+                <p><strong>Estimated Effort:</strong> 2-4 weeks for 20% coverage</p>
+                <p><strong>Expected Impact:</strong> Improve quality gate status</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>📋 Detailed Metrics Table</h2>
+            <table class="metrics-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>QG</th>
+                        <th>Blocker</th>
+                        <th>Critical</th>
+                        <th>Major</th>
+                        <th>Security</th>
+                        <th>Coverage</th>
+                        <th>Sec Rating</th>
+                        <th>Rel Rating</th>
+                        <th>Maint Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2025-11-01</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>2</td>
+                        <td>95</td>
+                        <td>342</td>
+                        <td>5</td>
+                        <td>2.1%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-08</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>2</td>
+                        <td>102</td>
+                        <td>338</td>
+                        <td>5</td>
+                        <td>2.3%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-15</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>2</td>
+                        <td>89</td>
+                        <td>345</td>
+                        <td>4</td>
+                        <td>2.5%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-22</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>1</td>
+                        <td>78</td>
+                        <td>328</td>
+                        <td>3</td>
+                        <td>2.8%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>2025-11-29</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>1</td>
+                        <td>71</td>
+                        <td>332</td>
+                        <td>2</td>
+                        <td>3.1%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                    <tr>
+                        <td>2025-12-04</td>
+                        <td><span class="badge badge-danger">ERROR</span></td>
+                        <td>1</td>
+                        <td>66</td>
+                        <td>335</td>
+                        <td>2</td>
+                        <td>3.4%</td>
+                        <td>E</td>
+                        <td>C</td>
+                        <td>A</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            <p><strong>Generated by:</strong> SonarCloud SAST Report Generator v1.0.0</p>
+            <p>This report is confidential and intended for internal use only.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Sample data
+        const dates = ['2025-11-01', '2025-11-08', '2025-11-15', '2025-11-22', '2025-11-29', '2025-12-04'];
+        
+        // Issues Trend Chart
+        const issuesCtx = document.getElementById('issuesChart').getContext('2d');
+        new Chart(issuesCtx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Blocker',
+                        data: [2, 2, 2, 1, 1, 1],
+                        borderColor: '#d32f2f',
+                        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Critical',
+                        data: [95, 102, 89, 78, 71, 66],
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(245, 124, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Major',
+                        data: [342, 338, 345, 328, 332, 335],
+                        borderColor: '#fbc02d',
+                        backgroundColor: 'rgba(251, 192, 45, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: false },
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Issue Count' } },
+                    x: { title: { display: true, text: 'Date' } }
+                }
+            }
+        });
+
+        // Security Trend Chart
+        const securityCtx = document.getElementById('securityChart').getContext('2d');
+        new Chart(securityCtx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Vulnerabilities',
+                        data: [12, 11, 10, 9, 8, 7],
+                        borderColor: '#d32f2f',
+                        backgroundColor: 'rgba(211, 47, 47, 0.6)',
+                        fill: true
+                    },
+                    {
+                        label: 'Security Hotspots',
+                        data: [7, 7, 7, 7, 7, 7],
+                        borderColor: '#f57c00',
+                        backgroundColor: 'rgba(245, 124, 0, 0.6)',
+                        fill: true
+                    },
+                    {
+                        label: 'Security Issues',
+                        data: [5, 5, 4, 3, 2, 2],
+                        borderColor: '#c62828',
+                        backgroundColor: 'rgba(198, 40, 40, 0.6)',
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: false },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Count' } },
+                    x: { title: { display: true, text: 'Date' } }
+                }
+            }
+        });
+
+        // Quality Gate Chart - Timeline with color-coded status
+        const qualityGateCtx = document.getElementById('qualityGateChart').getContext('2d');
+        const qgData = [0, 0, 0, 0, 0, 0]; // 0 = FAIL, 1 = PASS
+        const qgColors = qgData.map(status => status === 1 ? '#4caf50' : '#d32f2f');
+        
+        new Chart(qualityGateCtx, {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Quality Gate',
+                    data: qgData.map(() => 1), // All bars same height
+                    backgroundColor: qgColors,
+                    borderColor: qgColors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: false },
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const status = qgData[context.dataIndex] === 1 ? 'PASS ✅' : 'FAIL ❌';
+                                return 'Status: ' + status;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        display: false,
+                        beginAtZero: true,
+                        max: 1
+                    },
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Coverage Chart
+        const coverageCtx = document.getElementById('coverageChart').getContext('2d');
+        new Chart(coverageCtx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Code Coverage',
+                        data: [2.1, 2.3, 2.5, 2.8, 3.1, 3.4],
+                        borderColor: '#0288d1',
+                        backgroundColor: 'rgba(2, 136, 209, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Target (80%)',
+                        data: [80, 80, 80, 80, 80, 80],
+                        borderColor: '#4caf50',
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: false },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        max: 100,
+                        title: { display: true, text: 'Coverage (%)' }
+                    },
+                    x: { title: { display: true, text: 'Date' } }
+                }
+            }
+        });
+
+        // Ratings Chart
+        const ratingsCtx = document.getElementById('ratingsChart').getContext('2d');
+        new Chart(ratingsCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Security', 'Reliability', 'Maintainability'],
+                datasets: [
+                    {
+                        label: 'Current (2025-12-04)',
+                        data: [1, 3, 5],
+                        borderColor: '#0288d1',
+                        backgroundColor: 'rgba(2, 136, 209, 0.2)',
+                        pointBackgroundColor: '#0288d1'
+                    },
+                    {
+                        label: 'Start (2025-11-01)',
+                        data: [1, 3, 5],
+                        borderColor: '#9e9e9e',
+                        backgroundColor: 'rgba(158, 158, 158, 0.2)',
+                        pointBackgroundColor: '#9e9e9e'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: { display: false },
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 5,
+                        ticks: {
+                            stepSize: 1,
+                            callback: function(value) {
+                                const ratings = ['', 'E', 'D', 'C', 'B', 'A'];
+                                return ratings[value];
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Tab switching function
+        function switchTab(tabId) {
+            // Remove active class from all tabs and panes
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding pane
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>

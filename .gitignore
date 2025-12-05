@@ -49,6 +49,7 @@ config/*.yaml
 
 # Generated reports
 reports/*.md
+reports/*.html
 !reports/.gitkeep
 
 # OS

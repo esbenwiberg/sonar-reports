@@ -15,7 +15,6 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 | Metric | Value | Status |
 |--------|-------|--------|
 | **Quality Gate** | {{ quality_gate_status }} | {{ quality_gate_emoji }} |
-| **Technical Debt** | {{ statistics.technical_debt }} | {% if statistics.technical_debt_minutes > 2400 %}⚠️{% else %}ℹ️{% endif %} |
 
 ### Software Quality
 
@@ -41,7 +40,6 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 {% else %}
 - ✅ No security issues detected
 {% endif %}
-- ℹ️ Overall technical debt: {{ statistics.technical_debt }}
 
 ---
 
@@ -172,7 +170,6 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 {% if category_stats.maintainability.total > 0 %}
 - Address {{ category_stats.maintainability.total }} maintainability issue(s)
 {% endif %}
-- Reduce technical debt (current: {{ statistics.technical_debt }})
 - Improve code documentation
 
 ---
@@ -181,11 +178,11 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 
 ### Quality Ratings Explained
 
-- **A**: Excellent - 0 issues or < 5% technical debt ratio
-- **B**: Good - Minor issues or 5-10% technical debt ratio
-- **C**: Acceptable - Some issues or 10-20% technical debt ratio
-- **D**: Poor - Many issues or 20-50% technical debt ratio
-- **E**: Critical - Critical issues or > 50% technical debt ratio
+- **A**: Excellent - 0 issues
+- **B**: Good - Minor issues
+- **C**: Acceptable - Some issues
+- **D**: Poor - Many issues
+- **E**: Critical - Critical issues
 
 ### Severity Definitions
 
@@ -209,7 +206,6 @@ This report was generated using the SonarCloud API, which performs static analys
 - Bugs and potential runtime errors
 - Code smells and maintainability issues
 - Code coverage and duplication metrics
-- Technical debt estimation
 
 The analysis is based on industry-standard rules and best practices, including:
 - OWASP Top 10
@@ -228,3 +224,59 @@ The analysis is based on industry-standard rules and best practices, including:
 ---
 
 *This report is confidential and intended for internal use only. Do not distribute outside your organization without proper authorization.*
+
+---
+
+```yaml
+# REPORT_METADATA
+report_version: "1.0"
+generated_date: "{{ generation_date_iso }}"
+analysis_date: "{{ project_info.last_analysis_date }}"
+project:
+  key: "{{ project_info.key }}"
+  name: "{{ project_info.name }}"
+  organization: "{{ project_info.organization }}"
+quality_gate:
+  status: "{{ quality_gate_status }}"
+  passed: {{ 'true' if quality_gate_status == 'OK' else 'false' }}
+metrics:
+  total_issues: {{ statistics.total_issues }}
+  blocker_issues: {{ statistics.by_severity.get('BLOCKER', 0) }}
+  critical_issues: {{ statistics.by_severity.get('CRITICAL', 0) }}
+  major_issues: {{ statistics.by_severity.get('MAJOR', 0) }}
+  minor_issues: {{ statistics.by_severity.get('MINOR', 0) }}
+  info_issues: {{ statistics.by_severity.get('INFO', 0) }}
+  security_issues: {{ category_stats.security.total }}
+  reliability_issues: {{ category_stats.reliability.total }}
+  maintainability_issues: {{ category_stats.maintainability.total }}
+  vulnerabilities: {{ statistics.by_type.get('VULNERABILITY', 0) }}
+  bugs: {{ statistics.by_type.get('BUG', 0) }}
+  code_smells: {{ statistics.by_type.get('CODE_SMELL', 0) }}
+  security_hotspots: {{ security_summary.hotspots }}
+  code_coverage: {{ report_data.get_metric_value('coverage')|replace('%', '') }}
+  reliability_rating: "{{ report_data.get_metric_value('reliability_rating') }}"
+  security_rating: "{{ report_data.get_metric_value('security_rating') }}"
+  maintainability_rating: "{{ report_data.get_metric_value('sqale_rating') }}"
+categories:
+  security:
+    total: {{ category_stats.security.total }}
+    blocker: {{ category_stats.security.by_severity.get('BLOCKER', 0) }}
+    critical: {{ category_stats.security.by_severity.get('CRITICAL', 0) }}
+    major: {{ category_stats.security.by_severity.get('MAJOR', 0) }}
+    minor: {{ category_stats.security.by_severity.get('MINOR', 0) }}
+    info: {{ category_stats.security.by_severity.get('INFO', 0) }}
+  reliability:
+    total: {{ category_stats.reliability.total }}
+    blocker: {{ category_stats.reliability.by_severity.get('BLOCKER', 0) }}
+    critical: {{ category_stats.reliability.by_severity.get('CRITICAL', 0) }}
+    major: {{ category_stats.reliability.by_severity.get('MAJOR', 0) }}
+    minor: {{ category_stats.reliability.by_severity.get('MINOR', 0) }}
+    info: {{ category_stats.reliability.by_severity.get('INFO', 0) }}
+  maintainability:
+    total: {{ category_stats.maintainability.total }}
+    blocker: {{ category_stats.maintainability.by_severity.get('BLOCKER', 0) }}
+    critical: {{ category_stats.maintainability.by_severity.get('CRITICAL', 0) }}
+    major: {{ category_stats.maintainability.by_severity.get('MAJOR', 0) }}
+    minor: {{ category_stats.maintainability.by_severity.get('MINOR', 0) }}
+    info: {{ category_stats.maintainability.by_severity.get('INFO', 0) }}
+```

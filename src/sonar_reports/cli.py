@@ -202,6 +202,101 @@ def validate_config(config):
 
 
 @cli.command()
+@click.option(
+    '--reports-dir',
+    required=True,
+    type=click.Path(exists=True),
+    help='Directory containing report markdown files'
+)
+@click.option(
+    '--output',
+    type=click.Path(),
+    help='Output path for trend report (default: ./reports/trend-report.html)'
+)
+@click.option(
+    '--project-filter',
+    help='Filter reports by project name or key'
+)
+@click.option(
+    '--verbose',
+    is_flag=True,
+    help='Enable verbose logging'
+)
+def trend(reports_dir, output, project_filter, verbose):
+    """Generate trend analysis from multiple report files.
+    
+    Analyzes multiple SAST reports and generates an interactive HTML
+    trend report showing how metrics change over time.
+    
+    Example:
+        sonar-report trend --reports-dir ./reports
+        sonar-report trend --reports-dir ./reports --project-filter "PM.PowerHub"
+    """
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+        logger.debug("Verbose logging enabled")
+    
+    try:
+        from .trend import ReportParser, TrendDataAggregator, HTMLTrendReportGenerator
+        
+        if not output:
+            timestamp = datetime.now().strftime('%Y-%m-%d')
+            output = f"./reports/trend-report-{timestamp}.html"
+        
+        logger.info(f"Parsing reports from {reports_dir}")
+        parser = ReportParser()
+        reports = parser.parse_directory(reports_dir, project_filter)
+        
+        if not reports:
+            click.echo(f"\n✗ No reports found in {reports_dir}", err=True)
+            if project_filter:
+                click.echo(f"   (with filter: {project_filter})", err=True)
+            sys.exit(1)
+        
+        if len(reports) < 2:
+            click.echo(f"\n✗ Need at least 2 reports for trend analysis (found {len(reports)})", err=True)
+            sys.exit(1)
+        
+        logger.info(f"Found {len(reports)} reports")
+        click.echo(f"\n📊 Analyzing {len(reports)} reports...")
+        
+        aggregator = TrendDataAggregator()
+        trend_data = aggregator.aggregate_reports(reports)
+        
+        click.echo(f"📈 Generating HTML trend report...")
+        generator = HTMLTrendReportGenerator()
+        output_file = generator.generate(trend_data, output)
+        
+        summary = trend_data.calculate_summary_stats()
+        
+        click.echo("\n" + "="*60)
+        click.echo("✓ Trend report generated successfully!")
+        click.echo("="*60)
+        click.echo(f"\nProject: {trend_data.project_name}")
+        click.echo(f"Analysis Period: {trend_data.get_date_range_str()}")
+        click.echo(f"Reports Analyzed: {trend_data.get_report_count()}")
+        click.echo(f"\nOverall Trend: {summary['overall_trend'].upper()}")
+        click.echo(f"Quality Gate Pass Rate: {summary['quality_gate_pass_rate']:.0f}%")
+        click.echo(f"\nReport saved to: {output_file}")
+        click.echo("="*60 + "\n")
+    
+    except ImportError as e:
+        logger.error(f"Import Error: {e}")
+        click.echo(f"\n✗ Error: Missing dependencies for trend analysis\n", err=True)
+        sys.exit(1)
+    
+    except ValueError as e:
+        logger.error(f"Value Error: {e}")
+        click.echo(f"\n✗ Error: {e}\n", err=True)
+        sys.exit(1)
+    
+    except Exception as e:
+        logger.exception("Unexpected error occurred")
+        click.echo(f"\n✗ Unexpected Error: {e}\n", err=True)
+        sys.exit(1)
+
+
+@cli.command()
 def version():
     """Show version information."""
     click.echo("SonarCloud SAST Report Generator v1.0.0")
