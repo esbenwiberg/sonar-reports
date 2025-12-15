@@ -29,7 +29,7 @@ class Config:
     # Report settings
     output_path: str = "./reports"
     include_resolved: bool = False
-    severity_filter: List[str] = field(default_factory=lambda: ["BLOCKER", "CRITICAL", "MAJOR"])
+    severity_filter: List[str] = field(default_factory=lambda: ["BLOCKER", "CRITICAL", "MAJOR", "MINOR"])
     max_issues_per_section: int = 10
     
     # API settings

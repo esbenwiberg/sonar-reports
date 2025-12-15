@@ -132,6 +132,8 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
             click.echo(f"  Blocker: {stats['by_severity'].get('BLOCKER', 0)}")
             click.echo(f"  High: {stats['by_severity'].get('CRITICAL', 0)}")
             click.echo(f"  Medium: {stats['by_severity'].get('MAJOR', 0)}")
+            click.echo(f"  Minor: {stats['by_severity'].get('MINOR', 0)}")
+            click.echo(f"  Info: {stats['by_severity'].get('INFO', 0)}")
             click.echo(f"  Technical Debt: {stats['technical_debt']}")
             click.echo(f"\nReport saved to: {output_file}")
             click.echo("="*60 + "\n")

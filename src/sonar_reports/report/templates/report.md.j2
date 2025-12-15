@@ -16,6 +16,37 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 |--------|-------|--------|
 | **Quality Gate** | {{ quality_gate_status }} | {{ quality_gate_emoji }} |
 
+### Security Standards Compliance
+
+| Standard | Status | Notes |
+|----------|--------|-------|
+| OWASP Top 10 2021 | {% if security_summary.total == 0 %}✅ Good{% else %}⚠️ Partial{% endif %} | {{ security_summary.total }} security issue(s) found |
+| CWE Top 25 | {% if security_summary.vulnerabilities == 0 %}✅ Good{% else %}⚠️ Review Required{% endif %} | {{ security_summary.vulnerabilities }} vulnerabilit{% if security_summary.vulnerabilities != 1 %}ies{% else %}y{% endif %} identified |
+| SANS Top 25 | {% if statistics.by_severity.get('BLOCKER', 0) == 0 %}✅ Good{% else %}⚠️ Issues Found{% endif %} | {{ statistics.by_severity.get('BLOCKER', 0) }} blocker issue(s) |
+
+### Key Findings
+{% set total_blocker = statistics.by_severity.get('BLOCKER', 0) %}
+{% set total_critical = statistics.by_severity.get('CRITICAL', 0) %}
+{% set security_blocker = category_stats.security.by_severity.get('BLOCKER', 0) %}
+{% set security_critical = category_stats.security.by_severity.get('CRITICAL', 0) %}
+{% set reliability_blocker = category_stats.reliability.by_severity.get('BLOCKER', 0) %}
+{% set reliability_critical = category_stats.reliability.by_severity.get('CRITICAL', 0) %}
+{% set customer_facing_blocker = security_blocker + reliability_blocker %}
+{% set customer_facing_critical = security_critical + reliability_critical %}
+{% if customer_facing_blocker == 0 %}
+- ✅ No blocker-level issues detected
+{% else %}
+- ❌ {{ customer_facing_blocker }} blocker-level issue(s) require immediate attention
+{% endif %}
+{% if customer_facing_critical > 0 %}
+- ⚠️ {{ customer_facing_critical }} critical issue(s) require immediate attention
+{% endif %}
+{% if category_stats.security.total > 0 %}
+- ⚠️ {{ category_stats.security.total }} security issue(s) identified
+{% else %}
+- ✅ No security issues detected
+{% endif %}
+
 ### Software Quality
 
 | Category | Total Issues | Blocker | High | Medium | Low | Info |
@@ -23,23 +54,6 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 | **Security** | {{ category_stats.security.total }} | {{ category_stats.security.by_severity.get('BLOCKER', 0) }} | {{ category_stats.security.by_severity.get('CRITICAL', 0) }} | {{ category_stats.security.by_severity.get('MAJOR', 0) }} | {{ category_stats.security.by_severity.get('MINOR', 0) }} | {{ category_stats.security.by_severity.get('INFO', 0) }} |
 | **Reliability** | {{ category_stats.reliability.total }} | {{ category_stats.reliability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.reliability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.reliability.by_severity.get('MAJOR', 0) }} | {{ category_stats.reliability.by_severity.get('MINOR', 0) }} | {{ category_stats.reliability.by_severity.get('INFO', 0) }} |
 | **Maintainability** | {{ category_stats.maintainability.total }} | {{ category_stats.maintainability.by_severity.get('BLOCKER', 0) }} | {{ category_stats.maintainability.by_severity.get('CRITICAL', 0) }} | {{ category_stats.maintainability.by_severity.get('MAJOR', 0) }} | {{ category_stats.maintainability.by_severity.get('MINOR', 0) }} | {{ category_stats.maintainability.by_severity.get('INFO', 0) }} |
-
-### Key Findings
-{% set total_blocker = statistics.by_severity.get('BLOCKER', 0) %}
-{% set total_critical = statistics.by_severity.get('CRITICAL', 0) %}
-{% if total_blocker == 0 %}
-- ✅ No blocker-level issues detected
-{% else %}
-- ❌ {{ total_blocker }} blocker-level issue(s) require immediate attention
-{% endif %}
-{% if total_critical > 0 %}
-- ⚠️ {{ total_critical }} critical issue(s) require immediate attention
-{% endif %}
-{% if category_stats.security.total > 0 %}
-- ⚠️ {{ category_stats.security.total }} security issue(s) identified
-{% else %}
-- ✅ No security issues detected
-{% endif %}
 
 ---
 
@@ -112,18 +126,6 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 {% else %}
 ✅ **No security vulnerabilities detected** - Great job maintaining secure code!
 {% endif %}
-
----
-
-## Compliance & Standards
-
-### Security Standards Compliance
-
-| Standard | Status | Notes |
-|----------|--------|-------|
-| OWASP Top 10 2021 | {% if security_summary.total == 0 %}✅ Good{% else %}⚠️ Partial{% endif %} | {{ security_summary.total }} security issue(s) found |
-| CWE Top 25 | {% if security_summary.vulnerabilities == 0 %}✅ Good{% else %}⚠️ Review Required{% endif %} | {{ security_summary.vulnerabilities }} vulnerabilit{% if security_summary.vulnerabilities != 1 %}ies{% else %}y{% endif %} identified |
-| SANS Top 25 | {% if statistics.by_severity.get('BLOCKER', 0) == 0 %}✅ Good{% else %}⚠️ Issues Found{% endif %} | {{ statistics.by_severity.get('BLOCKER', 0) }} blocker issue(s) |
 
 ---
 
