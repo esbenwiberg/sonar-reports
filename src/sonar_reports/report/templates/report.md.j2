@@ -33,10 +33,14 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 {% set reliability_critical = category_stats.reliability.by_severity.get('CRITICAL', 0) %}
 {% set customer_facing_blocker = security_blocker + reliability_blocker %}
 {% set customer_facing_critical = security_critical + reliability_critical %}
+{% set maintainability_blocker = total_blocker - customer_facing_blocker %}
 {% if customer_facing_blocker == 0 %}
-- ✅ No blocker-level issues detected
+- ✅ No blocker-level security or reliability issues detected
 {% else %}
-- ❌ {{ customer_facing_blocker }} blocker-level issue(s) require immediate attention
+- ❌ {{ customer_facing_blocker }} blocker-level security/reliability issue(s) require immediate attention
+{% endif %}
+{% if maintainability_blocker > 0 %}
+- ⚠️ {{ maintainability_blocker }} blocker-level maintainability issue(s) also present
 {% endif %}
 {% if customer_facing_critical > 0 %}
 - ⚠️ {{ customer_facing_critical }} critical issue(s) require immediate attention
@@ -75,20 +79,21 @@ This report provides a comprehensive Static Application Security Testing (SAST) 
 {% endif %}
 {% endfor %}
 
-{% if security_hotspots|length > 0 %}
-### Security Hotspots ({{ security_hotspots|length }})
-
-Security hotspots are security-sensitive pieces of code that require manual review:
-
-| Priority | Category | Location | Status |
-|----------|----------|----------|--------|
-{% for hotspot in security_hotspots %}
-| {{ hotspot.get('vulnerabilityProbability', 'MEDIUM') }} | {{ hotspot.get('securityCategory', 'Unknown') }} | {{ hotspot.get('component', 'Unknown')[:60] }} | {{ hotspot.get('status', 'TO_REVIEW') }} |
-{% endfor %}
-{% endif %}
 
 {% else %}
 ✅ **No security issues detected** - Great job maintaining secure code!
+{% endif %}
+
+{% if security_hotspots|length > 0 %}
+### Security Hotspots ({{ security_summary.hotspots }} found, {{ hotspots_to_review }} awaiting review)
+
+Security hotspots are security-sensitive pieces of code that require manual review. A hotspot that has been reviewed and marked **SAFE** or **FIXED** is not a vulnerability.
+
+| Priority | Category | Location | Line | Status |
+|----------|----------|----------|------|--------|
+{% for hotspot in security_hotspots %}
+| {{ hotspot.get('vulnerabilityProbability', 'MEDIUM') }} | {{ hotspot.get('securityCategory', 'Unknown') }} | {{ (hotspot.get('component', 'Unknown').split(':', 1)[-1])[:70] }} | {{ hotspot.get('line', 'N/A') }} | {{ hotspot.get('status', 'TO_REVIEW') }}{% if hotspot.get('resolution') %} ({{ hotspot.get('resolution') }}){% endif %} |
+{% endfor %}
 {% endif %}
 
 ---
@@ -163,7 +168,11 @@ _Showing top {{ max_issues }} of {{ issues_by_type.get('VULNERABILITY', [])|leng
 {% if category_stats.reliability.total > 0 %}
 - Fix {{ category_stats.reliability.total }} reliability issue(s)
 {% endif %}
-- Review and resolve {{ security_hotspots|length }} security hotspot(s)
+{% if hotspots_to_review > 0 %}
+- Review and resolve {{ hotspots_to_review }} security hotspot(s) awaiting review
+{% elif security_summary.hotspots > 0 %}
+- All {{ security_summary.hotspots }} security hotspot(s) have been reviewed; re-review if the affected code changes
+{% endif %}
 
 ### Long-term Improvements (Priority 3)
 

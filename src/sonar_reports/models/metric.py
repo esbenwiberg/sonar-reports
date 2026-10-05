@@ -24,9 +24,12 @@ class Metric:
             Metric instance
         """
         metric_key = data.get('metric', '')
+        # A null 'value' (metrics carrying only new-code periods) must not stay
+        # None: every formatter below assumes a string.
+        value = data.get('value')
         return cls(
             key=metric_key,
-            value=data.get('value', '0'),
+            value='0' if value is None else str(value),
             metric_name=cls._get_metric_display_name(metric_key),
         )
     
@@ -73,7 +76,7 @@ class Metric:
         if self.key in ['coverage', 'duplicated_lines_density', 'comment_lines_density']:
             try:
                 return f"{float(self.value):.1f}%"
-            except ValueError:
+            except (TypeError, ValueError):
                 return self.value
         
         # Handle time-based metrics (technical debt)
@@ -88,7 +91,7 @@ class Metric:
         try:
             num_value = int(float(self.value))
             return f"{num_value:,}"
-        except ValueError:
+        except (TypeError, ValueError):
             return self.value
     
     @staticmethod
@@ -119,7 +122,7 @@ class Metric:
                 parts.append(f"{mins}min")
             
             return " ".join(parts) if parts else "0min"
-        except ValueError:
+        except (TypeError, ValueError):
             return minutes_str
     
     @staticmethod

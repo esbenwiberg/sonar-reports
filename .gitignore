@@ -50,6 +50,9 @@ config/*.yaml
 # Generated reports
 reports/*.md
 reports/*.html
+reports/*.json
+reports/*.pdf
+reports/customer_faced/
 !reports/.gitkeep
 
 # OS

@@ -45,6 +45,9 @@ class DataProcessor:
         
         logger.info("Fetching security hotspots...")
         security_hotspots = self.api_client.get_security_hotspots(project_key)
+        if security_hotspots:
+            logger.info(f"Fetching review details for {len(security_hotspots)} hotspot(s)...")
+            security_hotspots = self.api_client.enrich_hotspots(security_hotspots)
         
         logger.info("Fetching metrics...")
         raw_metrics = self.api_client.get_metrics(project_key)

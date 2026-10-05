@@ -1,8 +1,13 @@
 """Issue data model for SonarCloud issues."""
 
+import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -116,30 +121,40 @@ class Issue:
             return parts[-1]
         return self.component
     
+    #: Minutes per unit in SonarCloud effort strings. A working day is 8 hours.
+    _EFFORT_UNIT_MINUTES = {'min': 1, 'h': 60, 'd': 8 * 60}
+
+    #: 'min' before 'd'/'h' so the longer unit wins the alternation.
+    _EFFORT_PATTERN = re.compile(r'(\d+)\s*(min|d|h)')
+
     def get_effort_minutes(self) -> int:
         """
-        Convert effort string to minutes.
-        
+        Convert a SonarCloud effort string to minutes.
+
+        Efforts are compound — "1h58min", "1d4h", "3d2h15min" — so every
+        unit present is summed. A bare number is read as minutes.
+
         Returns:
-            Effort in minutes, or 0 if not available
+            Effort in minutes, or 0 if unset or unparseable
         """
         if not self.effort:
             return 0
-        
-        effort = self.effort.lower()
-        minutes = 0
-        
-        # Parse formats like "2h", "30min", "1d"
-        if 'd' in effort:
-            days = int(effort.replace('d', ''))
-            minutes = days * 8 * 60  # 8 hours per day
-        elif 'h' in effort:
-            hours = int(effort.replace('h', ''))
-            minutes = hours * 60
-        elif 'min' in effort:
-            minutes = int(effort.replace('min', ''))
-        
-        return minutes
+
+        effort = str(self.effort).strip().lower()
+
+        matches = self._EFFORT_PATTERN.findall(effort)
+        if matches:
+            return sum(
+                int(amount) * self._EFFORT_UNIT_MINUTES[unit]
+                for amount, unit in matches
+            )
+
+        # SonarCloud sometimes reports a plain minute count with no unit.
+        try:
+            return int(float(effort))
+        except ValueError:
+            logger.warning(f"Could not parse effort value {self.effort!r}")
+            return 0
     
     def __str__(self) -> str:
         """String representation of the issue."""

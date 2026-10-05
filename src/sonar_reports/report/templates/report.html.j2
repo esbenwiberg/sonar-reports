@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAST Report · {{ project.name }}</title>
+<style>
+  :root {
+    --ink: #1a1a19; --ink-2: #4a4a47; --muted: #7a7a75;
+    --line: #e3e2dd; --line-strong: #c9c8c2;
+    --surface: #ffffff; --surface-2: #f6f5f1; --surface-3: #eeede8;
+    --accent: #2f5fd0;
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b; --neutral: #9a9a94;
+    --good-bg: #e8f6e8; --warning-bg: #fef4dc; --serious-bg: #fdeae2; --critical-bg: #fae3e3; --neutral-bg: #efefec;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--surface-2); color: var(--ink);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+  .page { max-width: 960px; margin: 0 auto; padding: 32px 40px 48px; background: var(--surface); }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 18px; margin: 36px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 14.5px; margin: 22px 0 8px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.04em; }
+  p { margin: 6px 0 10px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .nowrap { white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .meta { display: grid; grid-template-columns: auto auto; gap: 2px 14px; font-size: 12.5px; color: var(--ink-2); margin-top: 10px; }
+  .meta dt { color: var(--muted); } .meta dd { margin: 0; }
+
+  .badge { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .badge .dot, .pill .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .tone-good { background: var(--good-bg); } .tone-good .dot { background: var(--good); }
+  .tone-warning { background: var(--warning-bg); } .tone-warning .dot { background: var(--warning); }
+  .tone-serious { background: var(--serious-bg); } .tone-serious .dot { background: var(--serious); }
+  .tone-critical { background: var(--critical-bg); } .tone-critical .dot { background: var(--critical); }
+  .tone-neutral, .tone-muted { background: var(--neutral-bg); } .tone-neutral .dot, .tone-muted .dot { background: var(--neutral); }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px 1px 6px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill .dot { width: 8px; height: 8px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(var(--cols, 6), 1fr); gap: 10px; margin: 18px 0 14px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 12px 12px 10px; background: var(--surface); border-top: 3px solid var(--neutral); break-inside: avoid; }
+  .tile.tone-good { border-top-color: var(--good); background: var(--surface); }
+  .tile.tone-warning { border-top-color: var(--warning); background: var(--surface); }
+  .tile.tone-serious { border-top-color: var(--serious); background: var(--surface); }
+  .tile.tone-critical { border-top-color: var(--critical); background: var(--surface); }
+  .tile .label { font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .tile .value { font-size: 24px; font-weight: 600; line-height: 1.15; margin: 3px 0 2px; }
+  .tile .sub { font-size: 10.5px; color: var(--muted); line-height: 1.3; }
+
+  .facts { display: grid; grid-template-columns: repeat(var(--cols, 6), 1fr); gap: 10px; margin-bottom: 8px; }
+  .fact { background: var(--surface-2); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .fact .label { font-size: 11.5px; color: var(--muted); }
+  .fact .value { font-size: 18px; font-weight: 600; }
+  .rating { display: inline-block; min-width: 28px; text-align: center; border-radius: 6px; padding: 0 6px; font-weight: 700; border: 1.5px solid var(--line-strong); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 8px 0 4px; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+  tbody tr { break-inside: avoid; }
+  td.file { overflow-wrap: anywhere; word-break: normal; }
+  tr.total td { font-weight: 600; border-top: 2px solid var(--line-strong); }
+
+  .bar { display: flex; height: 18px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--surface-3); margin: 10px 0 8px; }
+  .bar span { display: block; height: 100%; min-width: 2px; }
+  .seg-critical { background: var(--critical); } .seg-serious { background: var(--serious); } .seg-warning { background: var(--warning); } .seg-neutral { background: var(--neutral); } .seg-muted { background: var(--line-strong); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  .callout { border-left: 4px solid var(--good); background: var(--good-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 10px 0; break-inside: avoid; }
+  .callout.warn { border-left-color: var(--warning); background: var(--warning-bg); }
+  .callout.bad { border-left-color: var(--critical); background: var(--critical-bg); }
+  ul.rec { margin: 6px 0 12px; padding-left: 20px; } ul.rec li { margin: 4px 0; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+  footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+  .empty { color: var(--muted); font-style: italic; }
+  h4.sub-h { font-size: 13px; margin: 16px 0 4px; color: var(--ink-2); }
+  table.hotspots { table-layout: fixed; }
+  table.hotspots td.just { font-size: 12px; color: var(--ink-2); overflow-wrap: anywhere; }
+  table.hotspots .pill { font-size: 11px; padding: 1px 7px 1px 5px; white-space: normal; }
+  table.hotspots td.outcome { white-space: normal; }
+  table.hotspots td.just p { margin: 0 0 5px; }
+  table.hotspots td.just p:last-child { margin-bottom: 0; }
+  table.open col.c-prio { width: 13%; } table.open col.c-find { width: 33%; }
+  table.open col.c-file { width: 38%; } table.open col.c-line { width: 16%; }
+  table.closed col.c-prio { width: 13%; } table.closed col.c-find { width: 30%; }
+  table.closed col.c-file { width: 34%; } table.closed col.c-line { width: 23%; }
+  table.closed.has-just col.c-prio { width: 118px; } table.closed.has-just col.c-find { width: 23%; }
+  table.closed.has-just col.c-file { width: 21%; } table.closed.has-just col.c-line { width: 12%; }
+  table.closed.has-just col.c-just { width: 30%; }
+  .section, .pagebreak { break-inside: auto; }
+  .tile, .fact, .callout, .legend, .bar { break-inside: avoid; }
+  thead { display: table-header-group; }
+
+  @media print {
+    @page { size: A4; margin: 14mm 12mm 16mm; }
+    html, body { background: #fff; }
+    .page { max-width: none; padding: 0; }
+    h2 { break-after: avoid; } h3 { break-after: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @media (max-width: 720px) { .tiles, .facts { grid-template-columns: repeat(3, 1fr); } .two { grid-template-columns: 1fr; } header { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div>
+    <div class="eyebrow">Static Application Security Testing report</div>
+    <h1>{{ project.name }}</h1>
+    <dl class="meta">
+      <dt>Project key</dt><dd class="mono">{{ project.key }}</dd>
+      <dt>Organization</dt><dd>{{ project.organization }}</dd>
+      <dt>Analysis date</dt><dd>{{ project.last_analysis }}</dd>
+      <dt>Report generated</dt><dd>{{ generated_at }}</dd>
+    </dl>
+  </div>
+  <div class="badge {{ 'tone-good' if quality_gate.ok else 'tone-critical' }}" role="status">
+    <span class="dot" aria-hidden="true"></span>
+    Quality gate {{ 'passed' if quality_gate.ok else quality_gate.status|lower }}
+  </div>
+</header>
+
+<section class="section">
+  <h2>Executive summary</h2>
+  <p>
+    This report summarises the static analysis of <strong>{{ project.name }}</strong> as performed by {{ data_source.name or 'SonarCloud' }}.
+    It covers security vulnerabilities, security hotspots and reliability issues (bugs){% if internal %}, maintainability issues (code smells){% endif %},
+    together with the quality gate the project must pass on every analysis.
+  </p>
+
+  <div class="tiles" style="--cols: {{ kpis|length }}">
+  {% for k in kpis %}
+    <div class="tile tone-{{ k.tone }}">
+      <div class="label">{{ k.label }}</div>
+      <div class="value">{{ k.value }}</div>
+      <div class="sub">{{ k.sub }}</div>
+    </div>
+  {% endfor %}
+  </div>
+
+  <div class="facts" style="--cols: {{ ratings|length + facts|length }}">
+  {% for r in ratings %}
+    <div class="fact"><div class="label">{{ r.label }} rating</div><div class="value"><span class="rating">{{ r.value }}</span></div></div>
+  {% endfor %}
+  {% for f in facts %}
+    <div class="fact"><div class="label">{{ f.label }}</div><div class="value">{{ f.value }}</div></div>
+  {% endfor %}
+  </div>
+
+  {% if kpis[1].value == 0 and hotspots_open == 0 and quality_gate.ok %}
+  <div class="callout">
+    <strong>Security posture: no open findings.</strong>
+    No vulnerabilities are open{% if hotspots_total %} and all {{ hotspots_total }} security hotspot(s) have been reviewed{% endif %}. The quality gate passes.
+  </div>
+  {% elif kpis[1].value > 0 or hotspots_open > 0 %}
+  <div class="callout {{ 'bad' if kpis[1].value > 0 else 'warn' }}">
+    <strong>Security attention required.</strong>
+    {% if kpis[1].value > 0 %}{{ kpis[1].value }} vulnerability(ies) are open.{% endif %}
+    {% if hotspots_open > 0 %} {{ hotspots_open }} security hotspot(s) await review.{% endif %}
+  </div>
+  {% endif %}
+
+  <h3>Issues by severity</h3>
+  {% if total_issues %}
+  <div class="bar" role="img" aria-label="Distribution of {{ total_issues }} issues by severity">
+    {% for s in segments %}<span class="seg-{{ s.tone }}" style="width:{{ s.pct }}%" title="{{ s.label }}: {{ s.count }}"></span>{% endfor %}
+  </div>
+  <div class="legend">
+    {% for s in segments %}<span><i class="seg-{{ s.tone }}"></i>{{ s.label }} <strong>{{ '{:,}'.format(s.count) }}</strong></span>{% endfor %}
+    <span class="muted">Total <strong>{{ '{:,}'.format(total_issues) }}</strong></span>
+  </div>
+  {% else %}
+  <p class="empty">No open issues match the report scope.</p>
+  {% endif %}
+
+  <table>
+    <thead><tr><th>Category</th><th class="num">Total</th>{% for h in severity_headers %}<th class="num">{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for row in category_rows %}
+      <tr><td>{{ row.name }}</td><td class="num">{{ '{:,}'.format(row.total) }}</td>{% for n in row.by %}<td class="num">{{ '{:,}'.format(n) }}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">Severity labels follow the SonarCloud UI (Blocker, High, Medium, Low, Info). Scope: {{ scope.severity_filter|join(', ') }}{% if not scope.include_resolved %}; resolved issues excluded{% endif %}{% if not internal %}; maintainability findings (code smells) are out of scope for this report{% endif %}.</p>
+</section>
+
+<section class="section">
+  <h2>Security</h2>
+
+  <h3>Vulnerabilities ({{ vulnerabilities_total }})</h3>
+  {% if vulnerabilities %}
+  <table>
+    <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>File</th><th class="num">Line</th></tr></thead>
+    <tbody>
+    {% for v in vulnerabilities %}
+      <tr><td><span class="pill tone-{{ v.tone }}"><span class="dot"></span>{{ v.severity }}</span></td><td class="mono nowrap">{{ v.rule }}</td><td>{{ v.message }}</td><td class="file mono">{{ v.file }}</td><td class="num">{{ v.line }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if vulnerabilities_total > vulnerabilities|length %}<p class="small muted">Showing {{ vulnerabilities|length }} of {{ vulnerabilities_total }}.</p>{% endif %}
+  {% else %}
+  <p>No open vulnerabilities were detected.</p>
+  {% endif %}
+
+  <h3>Security review outcomes</h3>
+  <p>{{ hotspot_summary }}</p>
+  <p class="small muted">A security hotspot is code the scanner marks as security-sensitive and hands to a human for a decision. It is not a vulnerability.{% if hotspots_total %} Findings below are grouped by rule and file; every flagged line is listed.{% endif %}</p>
+
+  {% if hotspots_open_rows %}
+  <h4 class="sub-h">Awaiting review ({{ hotspots_open }})</h4>
+  <table class="hotspots open">
+    <colgroup><col class="c-prio"><col class="c-find"><col class="c-file"><col class="c-line"></colgroup>
+    <thead><tr><th>Scanner priority</th><th>Finding</th><th>File</th><th class="num">Line(s)</th></tr></thead>
+    <tbody>
+    {% for g in hotspots_open_rows %}
+      <tr>
+        <td><span class="pill tone-{{ g.tone }}"><span class="dot"></span>{{ g.probability|capitalize }}</span></td>
+        <td>{{ g.finding }}{% if internal and g.message and g.message != g.finding %}<div class="small muted">{{ g.message }}</div>{% endif %}</td>
+        <td class="file mono">{{ g.file }}</td>
+        <td class="num">{{ g.lines|join(', ') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% elif hotspots_total %}
+  <p class="small"><span class="pill tone-good"><span class="dot"></span>Awaiting review: none</span></p>
+  {% endif %}
+
+  {% if hotspots_closed_rows %}
+  <h4 class="sub-h">Reviewed and closed ({{ hotspots_total - hotspots_open }})</h4>
+  <table class="hotspots closed{% if hotspots_has_justification %} has-just{% endif %}">
+    <colgroup><col class="c-prio"><col class="c-find"><col class="c-file"><col class="c-line">{% if hotspots_has_justification %}<col class="c-just">{% endif %}</colgroup>
+    <thead><tr><th>Outcome</th><th>Finding</th><th>File</th><th class="num">Line(s)</th>{% if hotspots_has_justification %}<th>Reviewer's assessment</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for g in hotspots_closed_rows %}
+      <tr>
+        <td class="outcome"><span class="pill tone-good"><span class="dot"></span>{{ g.status_label }}</span></td>
+        <td>{{ g.finding }}<div class="small muted">{{ g.category }} · scanner priority {{ g.probability|lower }}{% if g.count > 1 %} · {{ g.count }} locations{% endif %}</div>{% if internal and g.message and g.message != g.finding %}<div class="small muted">{{ g.message }}</div>{% endif %}</td>
+        <td class="file mono">{{ g.file }}</td>
+        <td class="num">{{ g.lines|join(', ') }}</td>
+        {% if hotspots_has_justification %}<td class="just">{% for j in g.justification %}<p>{{ j }}</p>{% else %}<span class="muted">No comment recorded.</span>{% endfor %}</td>{% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if hotspots_grouped_total > hotspots_open_rows|length + hotspots_closed_rows|length %}<p class="small muted">Showing the first {{ max_rows }} groups per table.</p>{% endif %}
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2>Quality gate</h2>
+  <p>Status: <strong>{{ 'Passed' if quality_gate.ok else quality_gate.status }}</strong>. The gate is a set of conditions the project must satisfy; conditions marked "on new code" apply to code changed since the new-code period started.</p>
+  {% if quality_gate.conditions %}
+  <table>
+    <thead><tr><th>Condition</th><th>Requirement</th><th>Actual</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for c in quality_gate.conditions %}
+      <tr><td>{{ c.name }}</td><td class="nowrap">{{ c.requirement }}</td><td class="nowrap">{{ c.actual }}</td>
+        <td>{% if c.ok %}<span class="pill tone-good"><span class="dot"></span>OK</span>{% else %}<span class="pill tone-critical"><span class="dot"></span>{{ c.status }}</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No quality gate conditions were returned by the API.</p>
+  {% endif %}
+</section>
+
+<section class="pagebreak">
+  <h2>Reliability</h2>
+  <h3>Bugs ({{ bugs_total }})</h3>
+  {% if bugs %}
+  <table>
+    <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>File</th><th class="num">Line</th></tr></thead>
+    <tbody>
+    {% for b in bugs %}
+      <tr><td><span class="pill tone-{{ b.tone }}"><span class="dot"></span>{{ b.severity }}</span></td><td class="mono nowrap">{{ b.rule }}</td><td>{{ b.message }}</td><td class="file mono">{{ b.file }}</td><td class="num">{{ b.line }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if bugs_total > bugs|length %}<p class="small muted">Showing the {{ bugs|length }} most severe of {{ bugs_total }}.</p>{% endif %}
+  {% else %}
+  <p>No open bugs were detected.</p>
+  {% endif %}
+</section>
+
+{% if internal %}
+<section>
+  <h2>Maintainability</h2>
+  <h3>Most frequent rules</h3>
+  <p class="small muted">One rule with many hits usually means one pattern to fix. These are the cheapest wins.</p>
+  {% if top_rules %}
+  <table>
+    <thead><tr><th>Rule</th><th class="num">Count</th><th>Example</th></tr></thead>
+    <tbody>
+    {% for r in top_rules %}
+      <tr><td class="mono nowrap">{{ r.rule }}</td><td class="num">{{ '{:,}'.format(r.count) }}</td><td>{{ r.example }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p>No maintainability issues were detected.</p>
+  {% endif %}
+
+  <h3>High-severity maintainability issues ({{ high_smells_total }})</h3>
+  {% if high_smells %}
+  <table>
+    <thead><tr><th>Severity</th><th>Rule</th><th>Message</th><th>File</th><th class="num">Line</th></tr></thead>
+    <tbody>
+    {% for s in high_smells %}
+      <tr><td><span class="pill tone-{{ s.tone }}"><span class="dot"></span>{{ s.severity }}</span></td><td class="mono nowrap">{{ s.rule }}</td><td>{{ s.message }}</td><td class="file mono">{{ s.file }}</td><td class="num">{{ s.line }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if high_smells_total > high_smells|length %}<p class="small muted">Showing {{ high_smells|length }} of {{ high_smells_total }}.</p>{% endif %}
+  {% else %}
+  <p>No high-severity maintainability issues.</p>
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2>Recommendations</h2>
+  <div class="two">
+    <div>
+      <h3>Priority 1 · Immediate</h3>
+      {% if recommendations.p1 %}<ul class="rec">{% for r in recommendations.p1 %}<li>{{ r }}</li>{% endfor %}</ul>
+      {% else %}<p>Nothing blocking. No open vulnerabilities, no blocker issues, no hotspots awaiting review.</p>{% endif %}
+      <h3>Priority 2 · Short term</h3>
+      {% if recommendations.p2 %}<ul class="rec">{% for r in recommendations.p2 %}<li>{{ r }}</li>{% endfor %}</ul>{% else %}<p class="empty">None.</p>{% endif %}
+    </div>
+    <div>
+      <h3>Priority 3 · Long term</h3>
+      {% if recommendations.p3 %}<ul class="rec">{% for r in recommendations.p3 %}<li>{{ r }}</li>{% endfor %}</ul>{% else %}<p class="empty">None.</p>{% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="section">
+  <h2>About this report</h2>
+  <div class="two">
+    <div>
+      <h3>Methodology</h3>
+      <p class="small">The analysis is performed by {{ data_source.name or 'SonarCloud' }} ({{ data_source.role or 'static analysis' }}) on every build. Rules draw on the OWASP Top 10, CWE, SANS Top 25 and language-specific best practice. This document re-presents the analysis results; it does not perform its own scanning.</p>
+      <h3>Severity</h3>
+      <p class="small"><strong>Blocker</strong>: likely production impact, fix immediately. <strong>High</strong>: a security flaw or a bug with possible production impact. <strong>Medium</strong>: a quality flaw that strongly affects productivity. <strong>Low</strong>: a minor quality flaw. <strong>Info</strong>: informational only.</p>
+    </div>
+    <div>
+      <h3>Scope</h3>
+      <p class="small">Severities included: {{ scope.severity_filter|join(', ') }}. Resolved issues {{ 'included' if scope.include_resolved else 'excluded' }}.
+      {% if internal and scope.exported is not none %}{{ '{:,}'.format(scope.exported) }} of {{ '{:,}'.format(scope.total) }} matching issues were exported{% if scope.truncated %} (truncated){% endif %}.{% endif %}
+      Tables show at most {{ max_rows }} rows per section.</p>
+      <h3>Ratings</h3>
+      <p class="small"><strong>A</strong> best to <strong>E</strong> worst. Security and reliability ratings are driven by the worst open vulnerability or bug; maintainability by the ratio of estimated remediation effort to development effort.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Data source: {{ data_source.name or 'SonarCloud' }}{% if data_source.url %} ({{ data_source.url }}){% endif %}. Analysis {{ project.last_analysis }} · Data exported {{ generated_at }} · Document rendered {{ rendered_at }}.<br>
+  This report is confidential and intended for the recipient organization. Do not distribute without authorization.
+</footer>
+
+</div>
+</body>
+</html>

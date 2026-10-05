@@ -112,6 +112,7 @@ class ReportGenerator:
             'security_by_severity': security_by_severity,
             'security_summary': security_summary,
             'security_hotspots': report_data.security_hotspots[:self.max_issues_per_section],
+            'hotspots_to_review': sum(1 for h in report_data.security_hotspots if h.get('status') == 'TO_REVIEW'),
             'metrics': report_data.metrics,
             'quality_gate_status': report_data.project_info.quality_gate_status,
             'quality_gate_emoji': report_data.project_info.get_quality_gate_emoji(),

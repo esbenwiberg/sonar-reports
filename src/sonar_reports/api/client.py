@@ -19,7 +19,8 @@ class SonarCloudAPIError(Exception):
 class SonarCloudClient:
     """Client for interacting with SonarCloud API."""
     
-    def __init__(self, token: str, base_url: str = "https://sonarcloud.io", timeout: int = 30):
+    def __init__(self, token: str, base_url: str = "https://sonarcloud.io", timeout: int = 30,
+                 organization: Optional[str] = None):
         """
         Initialize SonarCloud API client.
         
@@ -27,10 +28,17 @@ class SonarCloudClient:
             token: SonarCloud API token
             base_url: Base URL for API
             timeout: Request timeout in seconds
+            organization: SonarCloud organization key. Required when authenticating
+                with an organization token — SonarCloud rejects such requests with
+                HTTP 400 unless 'organization' is sent on every call.
         """
         self.token = token
         self.base_url = base_url.rstrip('/')
         self.timeout = timeout
+        self.organization = organization
+        # Endpoints observed to reject the 'organization' param, learned at runtime
+        # so we only pay the retry once per endpoint per session.
+        self._no_org_endpoints = set()
         self.session = self._create_session()
     
     def _create_session(self) -> requests.Session:
@@ -62,6 +70,26 @@ class SonarCloudClient:
         
         return session
     
+    @staticmethod
+    def _error_detail(response) -> str:
+        """
+        Extract SonarCloud's own error message from a failed response.
+
+        SonarCloud returns {"errors":[{"msg":"..."}]}; without this the caller only
+        ever sees a bare status code, which makes failures undiagnosable.
+        """
+        try:
+            payload = response.json()
+        except (ValueError, AttributeError):
+            return (getattr(response, 'text', '') or '').strip()[:500]
+
+        msgs = [
+            e.get('msg', '') for e in payload.get('errors', [])
+            if isinstance(e, dict)
+        ]
+        detail = '; '.join(m for m in msgs if m)
+        return detail or (getattr(response, 'text', '') or '').strip()[:500]
+
     def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
         """
         Make API request with error handling.
@@ -77,7 +105,15 @@ class SonarCloudClient:
             SonarCloudAPIError: If request fails
         """
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        
+        params = dict(params or {})
+
+        # Organization tokens are only accepted when 'organization' accompanies
+        # every request. Harmless for user tokens: SonarCloud ignores it where
+        # it is not a documented parameter.
+        send_org = bool(self.organization) and endpoint not in self._no_org_endpoints
+        if send_org:
+            params.setdefault('organization', self.organization)
+
         try:
             logger.debug(f"Making request to {url} with params {params}")
             response = self.session.get(url, params=params, timeout=self.timeout)
@@ -85,6 +121,29 @@ class SonarCloudClient:
             return response.json()
         
         except requests.exceptions.HTTPError as e:
+            detail = self._error_detail(e.response)
+            status = e.response.status_code
+
+            # An endpoint that does not accept 'organization' — drop it and retry
+            # once, remembering the endpoint so later calls skip straight through.
+            if (status == 400 and send_org and 'organization' in detail.lower()
+                    and 'required' not in detail.lower()):
+                logger.debug(
+                    f"{endpoint} rejected the 'organization' parameter "
+                    f"({detail}); retrying without it"
+                )
+                self._no_org_endpoints.add(endpoint)
+                params.pop('organization', None)
+                return self._make_request(endpoint, params)
+
+            if status == 400 and 'organization' in detail.lower() and 'required' in detail.lower():
+                raise SonarCloudAPIError(
+                    f"{detail}. This token is a SonarCloud organization token, so the "
+                    "organization key must be supplied. Pass --organization <key>, set "
+                    "SONARCLOUD_ORGANIZATION, or add sonarcloud.organization to your "
+                    "config file."
+                ) from e
+
             if e.response.status_code == 401:
                 raise SonarCloudAPIError(
                     "Authentication failed. Please check your API token. "
@@ -93,17 +152,23 @@ class SonarCloudClient:
             elif e.response.status_code == 403:
                 raise SonarCloudAPIError(
                     "Access forbidden. Ensure your token has access to this project."
+                    + (f" ({detail})" if detail else "")
                 ) from e
             elif e.response.status_code == 404:
                 raise SonarCloudAPIError(
-                    f"Resource not found. Please check the project key and organization."
+                    f"Resource not found ({detail or 'no detail'}). "
+                    "Please check the project key and organization."
                 ) from e
             elif e.response.status_code == 429:
                 raise SonarCloudAPIError(
                     "Rate limit exceeded. Please wait a moment and try again."
                 ) from e
             else:
-                raise SonarCloudAPIError(f"API request failed: {e}") from e
+                raise SonarCloudAPIError(
+                    f"API request failed: HTTP {status}"
+                    + (f" — {detail}" if detail else "")
+                    + f" for {url}"
+                ) from e
         
         except requests.exceptions.Timeout:
             raise SonarCloudAPIError(
@@ -181,27 +246,74 @@ class SonarCloudClient:
         
         return self._paginate('/api/issues/search', params, 'issues')
     
-    def get_security_hotspots(self, project_key: str) -> List[Dict]:
+    def get_security_hotspots(self, project_key: str,
+                              statuses: Optional[List[str]] = None) -> List[Dict]:
         """
         Fetch security hotspots for a project.
-        
+
+        api/hotspots/search takes a SINGLE 'status' value — a comma-separated
+        list is rejected with HTTP 400 — so each status is fetched separately
+        and the results merged.
+
         Args:
             project_key: SonarCloud project key
-            
+            statuses: Hotspot statuses to fetch (default: TO_REVIEW, REVIEWED)
+
         Returns:
             List of security hotspot dictionaries
         """
-        params = {
-            'projectKey': project_key,
-            'status': 'TO_REVIEW,REVIEWED',
-        }
-        
-        try:
-            return self._paginate('/api/hotspots/search', params, 'hotspots')
-        except SonarCloudAPIError as e:
-            logger.warning(f"Failed to fetch security hotspots: {e}")
-            return []
+        if statuses is None:
+            statuses = ['TO_REVIEW', 'REVIEWED']
+
+        hotspots: List[Dict] = []
+        for status in statuses:
+            params = {'projectKey': project_key, 'status': status}
+            try:
+                hotspots.extend(
+                    self._paginate('/api/hotspots/search', params, 'hotspots')
+                )
+            except SonarCloudAPIError as e:
+                # Keep whatever we did retrieve; hotspots are supplementary.
+                logger.warning(f"Failed to fetch '{status}' security hotspots: {e}")
+        return hotspots
     
+    def enrich_hotspots(self, hotspots: List[Dict]) -> List[Dict]:
+        """
+        Add review context to hotspots from api/hotspots/show (one call each).
+
+        api/hotspots/search returns the scanner's view only. The show endpoint
+        adds the human side: the rule's readable title and the reviewer's
+        comments explaining why a hotspot was marked safe or fixed. Both are
+        what a reader needs to see a reviewed hotspot as closed rather than as
+        an unaddressed finding.
+
+        Adds ``ruleName`` (str or None) and ``reviewComments`` (list of str,
+        de-duplicated, in order). Never raises: a hotspot whose detail call
+        fails keeps its search-result fields and gets an empty comment list.
+        """
+        for hotspot in hotspots:
+            hotspot.setdefault('ruleName', None)
+            hotspot.setdefault('reviewComments', [])
+            key = hotspot.get('key')
+            if not key:
+                continue
+            try:
+                detail = self._make_request('/api/hotspots/show', {'hotspot': key})
+            except SonarCloudAPIError as e:
+                logger.warning(f"Could not fetch details for hotspot {key}: {e}")
+                continue
+            rule = detail.get('rule') or {}
+            hotspot['ruleName'] = rule.get('name') or hotspot.get('ruleName')
+            seen = set()
+            comments = []
+            for c in detail.get('comment') or []:
+                text = (c.get('markdown') or c.get('htmlText') or '').strip()
+                if text and text not in seen:
+                    seen.add(text)
+                    comments.append(text)
+            hotspot['reviewComments'] = comments
+        return hotspots
+
     def get_metrics(self, project_key: str) -> List[Dict]:
         """
         Fetch project metrics.
@@ -231,10 +343,72 @@ class SonarCloudClient:
             'metricKeys': ','.join(metric_keys),
         }
         
-        response = self._make_request('/api/measures/component', params)
+        try:
+            response = self._make_request('/api/measures/component', params)
+        except SonarCloudAPIError as e:
+            # Organization tokens are refused by the component-addressed
+            # endpoints (404 "Project doesn't exist"). Recover what we can from
+            # the branch listing rather than dropping the section entirely.
+            logger.warning(
+                f"api/measures/component unavailable for {project_key} ({e}); "
+                "deriving headline metrics from api/project_branches/list"
+            )
+            return self._metrics_from_branches(project_key)
+
         component = response.get('component', {})
         measures = component.get('measures', [])
         
+        return measures
+
+    # Branch-status field -> SonarCloud metric key.
+    _BRANCH_STATUS_METRICS = (
+        ('bugs', 'bugs'),
+        ('vulnerabilities', 'vulnerabilities'),
+        ('codeSmells', 'code_smells'),
+        ('securityHotspots', 'security_hotspots'),
+    )
+
+    def _metrics_from_branches(self, project_key: str) -> List[Dict]:
+        """
+        Derive headline metrics from api/project_branches/list.
+
+        That endpoint is permitted for organization tokens and its main-branch
+        entry carries bug, vulnerability and code-smell counts. Size and
+        coverage metrics (ncloc, coverage, ratings) are not available here and
+        are simply absent from the report.
+
+        Args:
+            project_key: SonarCloud project key
+
+        Returns:
+            List of measure dicts shaped like api/measures/component's output
+        """
+        try:
+            response = self._make_request(
+                '/api/project_branches/list', {'project': project_key}
+            )
+        except SonarCloudAPIError as e:
+            logger.warning(f"Could not derive metrics for {project_key}: {e}")
+            return []
+
+        branches = response.get('branches', [])
+        main_branch = next((b for b in branches if b.get('isMain')), None)
+        if main_branch is None:
+            logger.warning(f"No main branch reported for {project_key}")
+            return []
+
+        status = main_branch.get('status', {}) or {}
+        measures = [
+            {'metric': metric_key, 'value': str(status[field])}
+            for field, metric_key in self._BRANCH_STATUS_METRICS
+            if status.get(field) is not None
+        ]
+
+        if measures:
+            logger.info(
+                f"Derived {len(measures)} metric(s) for {project_key} from "
+                f"branch '{main_branch.get('name', '?')}'"
+            )
         return measures
     
     def get_project_info(self, project_key: str) -> Dict:
@@ -247,9 +421,58 @@ class SonarCloudClient:
         Returns:
             Project information dictionary
         """
-        params = {'component': project_key}
-        response = self._make_request('/api/components/show', params)
-        return response.get('component', {})
+        try:
+            response = self._make_request('/api/components/show', {'component': project_key})
+            return response.get('component', {})
+        except SonarCloudAPIError as e:
+            logger.warning(
+                f"api/components/show unavailable for {project_key} ({e}); "
+                "falling back to api/projects/search"
+            )
+            return self._project_info_from_search(project_key)
+
+    def _project_info_from_search(self, project_key: str) -> Dict:
+        """
+        Recover project metadata via api/projects/search.
+
+        Organization tokens are refused by the component-addressed endpoints,
+        but can still list projects — and that listing carries everything the
+        report header needs (key, name, organization, lastAnalysisDate).
+
+        Args:
+            project_key: SonarCloud project key
+
+        Returns:
+            Component-shaped dict, or {} if the project could not be recovered
+        """
+        if not self.organization:
+            logger.warning(
+                "Cannot recover project info without an organization key "
+                "(pass --organization or set SONARCLOUD_ORGANIZATION)"
+            )
+            return {}
+
+        try:
+            response = self._make_request(
+                '/api/projects/search',
+                {'organization': self.organization, 'q': project_key, 'ps': 100},
+            )
+        except SonarCloudAPIError as e:
+            logger.warning(f"Could not recover project info for {project_key}: {e}")
+            return {}
+
+        for component in response.get('components', []):
+            if component.get('key') == project_key:
+                info = dict(component)
+                # projects/search returns 'lastAnalysisDate'; components/show
+                # returns 'analysisDate'. ProjectInfo expects the latter.
+                if 'analysisDate' not in info:
+                    info['analysisDate'] = component.get('lastAnalysisDate', '')
+                info.setdefault('organization', self.organization)
+                return info
+
+        logger.warning(f"Project {project_key} not found via api/projects/search")
+        return {}
     
     def get_quality_gate_status(self, project_key: str) -> Dict:
         """

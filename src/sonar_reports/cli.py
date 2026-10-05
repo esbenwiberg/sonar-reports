@@ -10,6 +10,8 @@ from .config import Config
 from .api.client import SonarCloudClient, SonarCloudAPIError
 from .processors import DataProcessor
 from .report import ReportGenerator
+from .report.json_export import build_payload, write_json
+from .report.html_report import HtmlReportRenderer, html_to_pdf, find_chrome, PayloadError, AUDIENCES
 
 
 # Configure logging
@@ -37,6 +39,12 @@ def cli():
     help='SonarCloud project key (format: organization_project-name)'
 )
 @click.option(
+    '--organization',
+    default=None,
+    help='SonarCloud organization key (required when using an organization token). '
+         'Falls back to SONARCLOUD_ORGANIZATION or the config file.'
+)
+@click.option(
     '--config',
     type=click.Path(exists=True),
     help='Path to YAML configuration file'
@@ -45,6 +53,11 @@ def cli():
     '--output',
     type=click.Path(),
     help='Output file path (default: ./reports/PROJECT_KEY_DATE.md)'
+)
+@click.option(
+    '--json-output',
+    type=click.Path(),
+    help='Also write machine-readable JSON to this path (for the portfolio HTML builder)'
 )
 @click.option(
     '--severity',
@@ -62,7 +75,7 @@ def cli():
     is_flag=True,
     help='Enable verbose logging'
 )
-def generate(project_key, config, output, severity, include_resolved, verbose):
+def generate(project_key, organization, config, output, json_output, severity, include_resolved, verbose):
     """Generate SAST report for a project.
     
     Example:
@@ -81,6 +94,10 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
         else:
             cfg = Config.from_env(project_key=project_key)
         
+        # Explicit --organization wins over env var / config file
+        if organization:
+            cfg.organization = organization
+
         # Override severity filter if provided
         if severity:
             cfg.severity_filter = [s.upper() for s in severity]
@@ -90,7 +107,12 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
             cfg.include_resolved = True
         
         # Validate configuration
-        cfg.validate()
+        try:
+            cfg.validate()
+        except ValueError as e:
+            logger.error(f"Configuration Error: {e}")
+            click.echo(f"\n✗ Configuration Error: {e}\n", err=True)
+            sys.exit(1)
         logger.info(f"Configuration loaded: {cfg}")
         
         # Determine output path
@@ -100,7 +122,8 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
         
         # Create API client
         logger.info("Connecting to SonarCloud API...")
-        with SonarCloudClient(cfg.sonarcloud_token, cfg.base_url, cfg.timeout) as client:
+        with SonarCloudClient(cfg.sonarcloud_token, cfg.base_url, cfg.timeout,
+                              organization=cfg.organization) as client:
             # Validate connection
             try:
                 client.validate_connection()
@@ -118,6 +141,19 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
             logger.info("Generating report...")
             generator = ReportGenerator(max_issues_per_section=cfg.max_issues_per_section)
             output_file = generator.generate(report_data, output)
+
+            if json_output:
+                try:
+                    Path(json_output).parent.mkdir(parents=True, exist_ok=True)
+                    write_json(json_output, build_payload(
+                        report_data,
+                        severity_filter=cfg.severity_filter,
+                        base_url=cfg.base_url,
+                        include_resolved=cfg.include_resolved,
+                    ))
+                except Exception as e:
+                    # A sidecar failure must not invalidate a good report.
+                    logger.warning(f"Could not write JSON output to {json_output}: {e}")
             
             # Display summary
             stats = report_data.calculate_statistics()
@@ -143,14 +179,9 @@ def generate(project_key, config, output, severity, include_resolved, verbose):
         click.echo(f"\n✗ Error: {e}\n", err=True)
         sys.exit(1)
     
-    except ValueError as e:
-        logger.error(f"Configuration Error: {e}")
-        click.echo(f"\n✗ Configuration Error: {e}\n", err=True)
-        sys.exit(1)
-    
     except Exception as e:
         logger.exception("Unexpected error occurred")
-        click.echo(f"\n✗ Unexpected Error: {e}\n", err=True)
+        click.echo(f"\n✗ Unexpected Error: {type(e).__name__}: {e}\n", err=True)
         sys.exit(1)
 
 
@@ -186,7 +217,8 @@ def validate_config(config):
         
         # Test API connection
         click.echo("\nTesting API connection...")
-        with SonarCloudClient(cfg.sonarcloud_token, cfg.base_url) as client:
+        with SonarCloudClient(cfg.sonarcloud_token, cfg.base_url,
+                              organization=cfg.organization) as client:
             client.validate_connection()
             click.echo("✓ Successfully connected to SonarCloud API\n")
     
@@ -295,6 +327,85 @@ def trend(reports_dir, output, project_filter, verbose):
     except Exception as e:
         logger.exception("Unexpected error occurred")
         click.echo(f"\n✗ Unexpected Error: {e}\n", err=True)
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument('json_files', nargs=-1, required=True, type=click.Path(exists=True, dir_okay=False))
+@click.option(
+    '--output-dir',
+    type=click.Path(file_okay=False),
+    help='Directory for the HTML/PDF files (default: next to each JSON file)'
+)
+@click.option(
+    '--pdf',
+    is_flag=True,
+    help='Also print each HTML report to PDF using a locally installed Chrome/Chromium'
+)
+@click.option(
+    '--max-rows',
+    default=25,
+    show_default=True,
+    help='Maximum rows per findings table'
+)
+@click.option(
+    '--audience',
+    type=click.Choice(AUDIENCES),
+    default='customer',
+    show_default=True,
+    help='customer: security and reliability only. internal: adds maintainability, '
+         'size/coverage/duplication metrics and recommendations.'
+)
+@click.option(
+    '--verbose',
+    is_flag=True,
+    help='Enable verbose logging'
+)
+def render(json_files, output_dir, pdf, max_rows, audience, verbose):
+    """Render JSON report payload(s) to a self-contained HTML document, optionally PDF.
+
+    Takes the JSON written by `generate --json-output`, so rendering never
+    re-queries SonarCloud and can be repeated offline.
+
+    Example:
+        sonar-report render reports/*.json --pdf
+        sonar-report render reports/*.json --audience internal
+    """
+    import json as _json
+
+    if verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    if pdf and not find_chrome():
+        click.echo("\n✗ --pdf requested but no Chrome/Chromium was found. "
+                   "Install Google Chrome or set SONAR_REPORT_CHROME to the browser binary.\n", err=True)
+        sys.exit(1)
+
+    renderer = HtmlReportRenderer(max_rows=max_rows, audience=audience)
+    failures = 0
+    for jf in json_files:
+        src = Path(jf)
+        out_dir = Path(output_dir) if output_dir else src.parent
+        html_path = out_dir / (src.stem + '.html')
+        try:
+            with open(src, encoding='utf-8') as fh:
+                payload = _json.load(fh)
+            renderer.render_to_file(payload, str(html_path))
+            line = f"✓ {src.name} → {html_path}"
+            if pdf:
+                pdf_path = out_dir / (src.stem + '.pdf')
+                html_to_pdf(str(html_path), str(pdf_path))
+                line += f", {pdf_path.name}"
+            click.echo(line)
+        except (PayloadError, _json.JSONDecodeError) as e:
+            failures += 1
+            click.echo(f"✗ {src.name}: invalid payload: {e}", err=True)
+        except RuntimeError as e:
+            failures += 1
+            click.echo(f"✗ {src.name}: {e}", err=True)
+
+    if failures:
+        click.echo(f"\n{failures} of {len(json_files)} file(s) failed.", err=True)
         sys.exit(1)
 
 
